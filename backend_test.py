@@ -136,22 +136,181 @@ class SecretPollAPITester:
             return True
         return False
 
-    def test_join_room(self):
-        """Test joining a room"""
+    def test_join_room_with_name(self, participant_name="Test Participant"):
+        """Test joining a room with participant name (NEW APPROVAL SYSTEM)"""
         if not self.room_id:
             print("❌ No room ID available for joining test")
             return False
             
+        self.participant_name = participant_name
         success, response = self.run_test(
-            "Join Room",
+            "Join Room with Name (Approval System)",
             "POST",
             "api/rooms/join",
             200,
-            params={"room_id": self.room_id}
+            params={"room_id": self.room_id, "participant_name": participant_name}
         )
         if success and 'participant_token' in response:
             self.participant_token = response['participant_token']
-            print(f"   Got participant token: {self.participant_token[:8]}...")
+            # Check if approval_status is pending
+            if response.get('approval_status') == 'pending':
+                print(f"   ✅ Participant created with pending status")
+                print(f"   Got participant token: {self.participant_token[:8]}...")
+                return True
+            else:
+                print(f"   ❌ Expected pending status, got: {response.get('approval_status')}")
+                return False
+        return False
+
+    def test_get_participants_list(self):
+        """Test getting participants list for organizer"""
+        if not self.room_id:
+            print("❌ No room ID available for participants list test")
+            return False
+            
+        success, response = self.run_test(
+            "Get Participants List",
+            "GET",
+            f"api/rooms/{self.room_id}/participants",
+            200
+        )
+        if success and 'participants' in response:
+            participants = response['participants']
+            if len(participants) > 0:
+                # Store participant_id for approval tests
+                for p in participants:
+                    if p.get('participant_name') == self.participant_name:
+                        self.participant_id = p['participant_id']
+                        print(f"   Found participant ID: {self.participant_id}")
+                        break
+                print(f"   Found {len(participants)} participants")
+                return True
+        return False
+
+    def test_approve_participant(self):
+        """Test approving a participant"""
+        if not self.participant_id:
+            print("❌ No participant ID available for approval test")
+            return False
+            
+        success, response = self.run_test(
+            "Approve Participant",
+            "POST",
+            f"api/participants/{self.participant_id}/approve",
+            200
+        )
+        return success
+
+    def test_deny_participant(self):
+        """Test denying a participant (separate participant)"""
+        # First create another participant to deny
+        if not self.room_id:
+            print("❌ No room ID available for deny test")
+            return False
+            
+        # Join with different name
+        success, response = self.run_test(
+            "Join Room (For Deny Test)",
+            "POST",
+            "api/rooms/join",
+            200,
+            params={"room_id": self.room_id, "participant_name": "Test Participant 2"}
+        )
+        
+        if not success:
+            return False
+            
+        # Get participants list to find the new participant
+        success, response = self.run_test(
+            "Get Participants (For Deny)",
+            "GET",
+            f"api/rooms/{self.room_id}/participants",
+            200
+        )
+        
+        if not success:
+            return False
+            
+        # Find the second participant
+        deny_participant_id = None
+        for p in response['participants']:
+            if p.get('participant_name') == "Test Participant 2":
+                deny_participant_id = p['participant_id']
+                break
+                
+        if not deny_participant_id:
+            print("❌ Could not find participant to deny")
+            return False
+            
+        # Now deny the participant
+        success, response = self.run_test(
+            "Deny Participant",
+            "POST",
+            f"api/participants/{deny_participant_id}/deny",
+            200
+        )
+        return success
+
+    def test_vote_unapproved_participant(self):
+        """Test voting with unapproved participant (should fail)"""
+        if not self.poll_id:
+            print("❌ No poll ID available for unapproved vote test")
+            return False
+            
+        # Create a new participant that won't be approved
+        success, response = self.run_test(
+            "Join Room (Unapproved)",
+            "POST",
+            "api/rooms/join",
+            200,
+            params={"room_id": self.room_id, "participant_name": "Unapproved Participant"}
+        )
+        
+        if not success:
+            return False
+            
+        unapproved_token = response.get('participant_token')
+        if not unapproved_token:
+            print("❌ No token for unapproved participant")
+            return False
+            
+        # Try to vote with unapproved participant (should fail with 403)
+        vote_data = {
+            "participant_token": unapproved_token,
+            "selected_option": "Red"
+        }
+        
+        success, response = self.run_test(
+            "Vote with Unapproved Participant (Should Fail)",
+            "POST",
+            f"api/polls/{self.poll_id}/vote",
+            403,  # Should fail with 403 Forbidden
+            data=vote_data
+        )
+        return success
+
+    def test_room_status_with_approval_counts(self):
+        """Test room status shows approval counts"""
+        if not self.room_id:
+            print("❌ No room ID available for status test")
+            return False
+            
+        success, response = self.run_test(
+            "Get Room Status (With Approval Counts)",
+            "GET",
+            f"api/rooms/{self.room_id}/status",
+            200
+        )
+        
+        if success:
+            # Check if response contains approval counts
+            required_fields = ['participant_count', 'approved_count', 'pending_count']
+            for field in required_fields:
+                if field not in response:
+                    print(f"   ❌ Missing field: {field}")
+                    return False
+                else:
+                    print(f"   ✅ {field}: {response[field]}")
             return True
         return False
 
