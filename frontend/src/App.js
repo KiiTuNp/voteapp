@@ -569,7 +569,7 @@ function OrganizerDashboard({
             onClick={onGenerateReport}
             className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
           >
-            Generate Report & End Meeting
+            📄 Generate PDF Report & End Meeting
           </button>
         </div>
       </div>
