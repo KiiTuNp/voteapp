@@ -65,11 +65,11 @@ class SecretPollAPITester:
             return False, {}
 
     def test_create_room_with_custom_id(self):
-        """Test creating room with custom ID"""
-        custom_id = f"MARKETING-{datetime.now().strftime('%H%M%S')}"
+        """Test creating room with valid custom ID (3-10 alphanumeric characters)"""
+        custom_id = "MEET01"  # Valid: 6 characters, alphanumeric
         
         success, response = self.run_test(
-            "Create Room with Custom ID",
+            "Create Room with Valid Custom ID",
             "POST",
             "api/rooms/create",
             200,
