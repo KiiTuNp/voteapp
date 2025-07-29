@@ -82,7 +82,9 @@ class Vote(BaseModel):
 class Participant(BaseModel):
     participant_id: str
     room_id: str
+    participant_name: str
     participant_token: str
+    approval_status: str  # "pending", "approved", "denied"
     joined_at: datetime
 
 # API Routes
