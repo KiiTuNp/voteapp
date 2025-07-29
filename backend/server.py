@@ -230,6 +230,14 @@ async def vote(poll_id: str, request: VoteRequest):
     if not poll:
         raise HTTPException(status_code=404, detail="Poll not found or inactive")
     
+    # Check if participant is approved to vote
+    participant = participants_collection.find_one({"participant_token": request.participant_token})
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    
+    if participant["approval_status"] != "approved":
+        raise HTTPException(status_code=403, detail="Participant not approved to vote")
+    
     # Check if participant already voted for this poll
     existing_vote = votes_collection.find_one({
         "poll_id": poll_id,
