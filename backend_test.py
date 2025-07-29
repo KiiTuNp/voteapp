@@ -1186,14 +1186,14 @@ class SecretPollAPITester:
             print("❌ Real-time vote updates test failed, stopping tests")
             return False
 
-        # Test multi-room management
-        print("\n" + "="*50)
-        print("🏢 TESTING MULTI-ROOM MANAGEMENT")
-        print("="*50)
-        
-        if not self.test_organizer_multi_room_management():
-            print("❌ Multi-room management test failed, stopping tests")
-            return False
+        # Test multi-room management - REMOVED (not in simplified system)
+        # print("\n" + "="*50)
+        # print("🏢 TESTING MULTI-ROOM MANAGEMENT")
+        # print("="*50)
+        # 
+        # if not self.test_organizer_multi_room_management():
+        #     print("❌ Multi-room management test failed, stopping tests")
+        #     return False
 
         # Additional tests
         print("\n" + "="*50)
