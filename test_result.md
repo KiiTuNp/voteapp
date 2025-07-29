@@ -254,6 +254,6 @@ test_plan:
 
 agent_communication:
     - agent: "main"
-      message: "Successfully created enhanced turnkey deployment script at /app/scripts/deploy.sh. The script provides 5 deployment strategies (Docker Isolated, Docker Standard, Manual Integration, Portable, Custom), comprehensive conflict detection, automatic infrastructure compatibility checks, and rollback capabilities. It can deploy in ANY context without breaking existing services."
+      message: "PROBLÈME D'INTERACTIVITÉ RÉSOLU ✅ Créé deploy-final.sh avec saisie clavier 100% fonctionnelle. Corrections: utilisation correcte des descripteurs de fichier (stderr pour prompts, stdin pour input), fonctions d'input robustes avec validation, choix multiples interactifs. Script principal maintenant complètement opérationnel pour déploiement interactif."
     - agent: "testing"
       message: "Completed comprehensive testing of Secret Poll backend API. All major endpoints tested and working correctly: Health check (✅), Room creation/management (✅), Poll creation/voting (✅), Participant management (✅), WebSocket connectivity (✅), PDF generation (✅), Database operations (✅), Real-time updates (✅), Multiple active polls (✅). Total: 47/47 tests passed (100% success rate). Backend is production-ready."
