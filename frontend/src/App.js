@@ -565,6 +565,7 @@ function OrganizerDashboard({
   allPolls,
   createdPolls,
   participants,
+  pollTimers,
   voteResults, 
   onCreatePoll, 
   onStartPoll, 
