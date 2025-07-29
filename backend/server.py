@@ -168,6 +168,7 @@ class PollCreateRequest(BaseModel):
     room_id: str
     question: str
     options: List[str]
+    timer_minutes: Optional[int] = None  # Optional timer in minutes
 
 @app.post("/api/polls/create")
 async def create_poll(request: PollCreateRequest):
