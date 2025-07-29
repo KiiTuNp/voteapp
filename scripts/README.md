@@ -45,18 +45,22 @@ The `deploy.sh` script provides a completely automated, foolproof deployment sol
 ### Basic Usage
 
 ```bash
+# Clone the repository
+git clone https://github.com/KiiTuNp/voteapp.git
+cd voteapp
+
 # Make the script executable
-chmod +x /app/scripts/deploy.sh
+chmod +x scripts/deploy.sh
 
 # Run the deployment
-sudo /app/scripts/deploy.sh
+sudo scripts/deploy.sh
 ```
 
 The script will:
 1. Analyze your system
 2. Detect any conflicts
 3. Recommend the best deployment strategy
-4. Guide you through configuration
+4. Guide you through configuration (with the GitHub repo as default)
 5. Deploy the application automatically
 
 ## Deployment Strategies Explained
