@@ -138,6 +138,10 @@ function App() {
       await fetch(`${BACKEND_URL}/api/polls/${pollId}/start`, {
         method: 'POST'
       });
+      // Reload room status to update UI
+      if (roomData && roomData.room_id) {
+        loadRoomStatus(roomData.room_id);
+      }
     } catch (error) {
       alert('Error starting poll: ' + error.message);
     }
