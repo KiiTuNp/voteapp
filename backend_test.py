@@ -10,10 +10,12 @@ class SecretPollAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.room_id = None
+        self.custom_room_id = None
         self.participant_token = None
         self.participant_id = None
         self.participant_name = None
         self.poll_id = None
+        self.organizer_name = "Test Organizer"
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
         """Run a single API test"""
