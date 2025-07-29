@@ -172,25 +172,40 @@ prompt_input() {
         return
     fi
     
-    if [[ "$secret" == "true" ]]; then
-        echo -e "${CYAN}$prompt${NC}"
-        if [[ -n "$default" ]]; then
-            echo -e "${YELLOW}(default: [hidden])${NC}"
-        fi
-        echo -n "> "
-        read -s value
-        echo
-    else
-        if [[ -n "$default" ]]; then
-            echo -e "${CYAN}$prompt${NC} ${YELLOW}(default: $default)${NC}"
-        else
+    # Interactive mode
+    while true; do
+        if [[ "$secret" == "true" ]]; then
             echo -e "${CYAN}$prompt${NC}"
+            if [[ -n "$default" ]]; then
+                echo -e "${YELLOW}(default: [hidden])${NC}"
+            fi
+            echo -ne "> "
+            read -s value < /dev/tty
+            echo  # New line after hidden input
+        else
+            if [[ -n "$default" ]]; then
+                echo -e "${CYAN}$prompt${NC} ${YELLOW}(default: $default)${NC}"
+            else
+                echo -e "${CYAN}$prompt${NC}"
+            fi
+            echo -ne "> "
+            read -r value < /dev/tty
         fi
-        echo -n "> "
-        read -r value
-    fi
-    
-    echo "${value:-$default}"
+        
+        # Use default if empty
+        if [[ -z "$value" ]]; then
+            value="$default"
+        fi
+        
+        # Validation for non-empty required fields
+        if [[ -z "$value" && -z "$default" ]]; then
+            echo -e "${RED}This field is required. Please enter a value.${NC}"
+            continue
+        fi
+        
+        echo "$value"
+        return
+    done
 }
 
 # =============================================================================
