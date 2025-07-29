@@ -277,6 +277,15 @@ async def get_room_status(room_id: str):
     # Get current active poll
     active_poll = polls_collection.find_one({"room_id": room_id, "is_active": True})
     
+    # Clean up active_poll for JSON serialization
+    if active_poll:
+        active_poll = {
+            "poll_id": active_poll["poll_id"],
+            "question": active_poll["question"],
+            "options": active_poll["options"],
+            "is_active": active_poll["is_active"]
+        }
+    
     return {
         "room_id": room_id,
         "organizer_name": room["organizer_name"],
