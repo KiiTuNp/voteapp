@@ -123,15 +123,26 @@ function App() {
     }
   };
 
-  // Join Room (Participant)
+  // Join Room (Participant) with enhanced error handling
   const joinRoom = async (roomId, participantName) => {
     try {
       const response = await fetch(`${BACKEND_URL}/api/rooms/join?room_id=${roomId}&participant_name=${encodeURIComponent(participantName)}`, {
-        method: 'POST'
+        method: 'POST',
+        timeout: 15000 // 15 second timeout
       });
       
       if (!response.ok) {
-        throw new Error('Room not found');
+        const errorData = await response.json().catch(() => ({}));
+        
+        if (response.status === 404) {
+          throw new Error('Room not found. Please check the Room ID and try again.');
+        }
+        
+        if (response.status === 400) {
+          throw new Error(errorData.detail || 'Invalid room ID or participant name.');
+        }
+        
+        throw new Error(errorData.detail || `Server error: ${response.status}`);
       }
       
       const data = await response.json();
@@ -142,8 +153,13 @@ function App() {
       
       // Load room status to check for existing active polls
       loadRoomStatus(roomId);
+      
     } catch (error) {
-      alert('Error joining room: ' + error.message);
+      console.error('Join room error:', error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network connection failed. Please check your internet connection and try again.');
+      }
+      throw error;
     }
   };
 
