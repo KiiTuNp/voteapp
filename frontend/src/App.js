@@ -699,17 +699,18 @@ function OrganizerDashboard({
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Poll Management</h2>
           <div className="space-y-4">
             {allPolls.map((poll) => (
-              <div key={poll.poll_id} className={`p-4 rounded-lg border-2 ${poll.is_active ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'}`}>
+              <div key={poll.poll_id} className={`p-4 rounded-lg border-2 ${poll.is_active ? 'border-green-500 bg-green-50' : 'border-gray-400 bg-gray-100'}`}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-800 mb-2">
                       {poll.question}
                       {poll.is_active && <span className="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded-full">ACTIVE</span>}
+                      {!poll.is_active && poll.total_votes > 0 && <span className="ml-2 px-2 py-1 bg-gray-600 text-white text-xs rounded-full">CLOSED</span>}
                     </h4>
                     <p className="text-sm text-gray-600 mb-2">Options: {poll.options.join(', ')}</p>
                     <p className="text-sm text-gray-500">Total votes: {poll.total_votes || 0}</p>
                     
-                    {/* Show vote breakdown if there are votes */}
+                    {/* Show live vote breakdown */}
                     {poll.total_votes > 0 && (
                       <div className="mt-2 space-y-1">
                         {poll.options.map(option => {
@@ -734,13 +735,17 @@ function OrganizerDashboard({
                       >
                         Stop
                       </button>
-                    ) : (
+                    ) : poll.total_votes === 0 ? (
                       <button
                         onClick={() => onStartPoll(poll.poll_id)}
                         className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
                       >
-                        {poll.total_votes > 0 ? 'Restart' : 'Start'}
+                        Start
                       </button>
+                    ) : (
+                      <span className="px-3 py-1 text-xs text-gray-500 bg-gray-200 rounded">
+                        Closed
+                      </span>
                     )}
                   </div>
                 </div>
