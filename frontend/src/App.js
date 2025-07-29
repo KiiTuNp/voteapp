@@ -88,9 +88,9 @@ function App() {
   };
 
   // Join Room (Participant)
-  const joinRoom = async (roomId) => {
+  const joinRoom = async (roomId, participantName) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/rooms/join?room_id=${roomId}`, {
+      const response = await fetch(`${BACKEND_URL}/api/rooms/join?room_id=${roomId}&participant_name=${encodeURIComponent(participantName)}`, {
         method: 'POST'
       });
       
@@ -101,6 +101,7 @@ function App() {
       const data = await response.json();
       setRoomData(data);
       setParticipantToken(data.participant_token);
+      setApprovalStatus(data.approval_status);
       setCurrentView('participant');
       
       // Load room status to check for existing active polls
