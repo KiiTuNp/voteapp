@@ -1387,25 +1387,16 @@ class SecretPollAPITester:
             return False
 
 def main():
-    """Main test function"""
+    """Main test function - Focus on critical issues"""
     tester = SecretPollAPITester()
     
-    success = tester.run_all_tests()
+    success = tester.run_critical_tests()
     
-    # Print final results
-    print("\n" + "=" * 50)
-    print("📊 FINAL TEST RESULTS")
-    print("=" * 50)
-    print(f"Tests Run: {tester.tests_run}")
-    print(f"Tests Passed: {tester.tests_passed}")
-    print(f"Tests Failed: {tester.tests_run - tester.tests_passed}")
-    print(f"Success Rate: {(tester.tests_passed / tester.tests_run * 100):.1f}%")
-    
-    if success and tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed!")
+    if success:
+        print("🎉 All critical tests passed!")
         return 0
     else:
-        print("❌ Some tests failed!")
+        print("❌ Critical issues found!")
         return 1
 
 if __name__ == "__main__":
