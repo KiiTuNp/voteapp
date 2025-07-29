@@ -587,7 +587,7 @@ function ParticipantView({ roomData, activePoll, hasVoted, voteResults, onVote, 
         </div>
       </div>
 
-      {!activePool && (
+      {!activePoll && (
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
