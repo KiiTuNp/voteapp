@@ -599,7 +599,7 @@ function ParticipantView({ roomData, activePoll, hasVoted, voteResults, onVote, 
         </div>
       )}
 
-      {activePool && !hasVoted && (
+      {activePoll && !hasVoted && (
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Poll</h2>
           <h3 className="text-xl text-gray-700 mb-6">{activePool.question}</h3>
