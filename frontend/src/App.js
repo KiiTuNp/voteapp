@@ -538,9 +538,20 @@ function OrganizerDashboard({
     e.preventDefault();
     const validOptions = options.filter(opt => opt.trim());
     if (question.trim() && validOptions.length >= 2) {
-      onCreatePoll(question.trim(), validOptions);
+      const pollData = {
+        question: question.trim(),
+        options: validOptions
+      };
+      
+      // Add timer if specified
+      if (timerMinutes && parseInt(timerMinutes) > 0) {
+        pollData.timer_minutes = parseInt(timerMinutes);
+      }
+      
+      onCreatePoll(pollData.question, pollData.options, pollData.timer_minutes);
       setQuestion('');
       setOptions(['', '']);
+      setTimerMinutes('');
       setShowPollForm(false);
     }
   };
