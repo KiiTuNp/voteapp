@@ -693,64 +693,59 @@ function OrganizerDashboard({
         </div>
       )}
 
-      {createdPolls.length > 0 && !activePoll && (
+      {/* All Polls Management Section */}
+      {allPolls.length > 0 && (
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Polls</h2>
-          <p className="text-sm text-gray-600 mb-4">Start a poll to begin voting</p>
-          <div className="space-y-3">
-            {createdPolls.map((poll) => (
-              <div key={poll.poll_id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-gray-800">{poll.question}</h4>
-                  <p className="text-sm text-gray-600">{poll.options.join(', ')}</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Poll Management</h2>
+          <div className="space-y-4">
+            {allPolls.map((poll) => (
+              <div key={poll.poll_id} className={`p-4 rounded-lg border-2 ${poll.is_active ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'}`}>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-800 mb-2">
+                      {poll.question}
+                      {poll.is_active && <span className="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded-full">ACTIVE</span>}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-2">Options: {poll.options.join(', ')}</p>
+                    <p className="text-sm text-gray-500">Total votes: {poll.total_votes || 0}</p>
+                    
+                    {/* Show vote breakdown if there are votes */}
+                    {poll.total_votes > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {poll.options.map(option => {
+                          const count = poll.vote_counts[option] || 0;
+                          const percentage = poll.total_votes > 0 ? ((count / poll.total_votes) * 100).toFixed(1) : 0;
+                          return (
+                            <div key={option} className="flex justify-between text-sm">
+                              <span>{option}:</span>
+                              <span>{count} votes ({percentage}%)</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2 ml-4">
+                    {poll.is_active ? (
+                      <button
+                        onClick={() => onStopPoll(poll.poll_id)}
+                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                      >
+                        Stop
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onStartPoll(poll.poll_id)}
+                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
+                      >
+                        {poll.total_votes > 0 ? 'Restart' : 'Start'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <button
-                  onClick={() => onStartPoll(poll.poll_id)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Start Poll
-                </button>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {activePoll && (
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Active Poll</h2>
-            <button
-              onClick={() => onStopPoll(activePoll.poll_id)}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Stop Poll
-            </button>
-          </div>
-          
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">{activePoll.question}</h3>
-          
-          <div className="space-y-3">
-            {activePoll.options?.map((option, index) => {
-              const count = voteResults[option] || 0;
-              const total = Object.values(voteResults).reduce((sum, count) => sum + count, 0);
-              const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
-              
-              return (
-                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium">{option}</span>
-                    <span className="text-gray-600">{count} votes ({percentage}%)</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
