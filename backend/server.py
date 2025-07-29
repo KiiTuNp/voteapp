@@ -101,8 +101,17 @@ async def health_check():
     return {"status": "healthy"}
 
 @app.post("/api/rooms/create")
-async def create_room(organizer_name: str):
-    room_id = str(uuid.uuid4())[:8].upper()
+async def create_room(organizer_name: str, custom_room_id: str = None):
+    # Generate room ID
+    if custom_room_id and custom_room_id.strip():
+        # Check if custom room ID already exists
+        existing_room = rooms_collection.find_one({"room_id": custom_room_id.strip().upper()})
+        if existing_room:
+            raise HTTPException(status_code=400, detail="Room ID already exists. Please choose a different ID.")
+        room_id = custom_room_id.strip().upper()
+    else:
+        # Generate random room ID if no custom ID provided
+        room_id = str(uuid.uuid4())[:8].upper()
     
     room = {
         "room_id": room_id,
