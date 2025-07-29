@@ -135,7 +135,8 @@ class SecretPollAPITester:
             print("❌ No room ID available for poll creation test")
             return False
             
-        poll_data = {
+        # Backend expects query parameters, not JSON body
+        poll_params = {
             "room_id": self.room_id,
             "question": "What is your favorite color?",
             "options": ["Red", "Blue", "Green", "Yellow"]
@@ -146,7 +147,7 @@ class SecretPollAPITester:
             "POST",
             "api/polls/create",
             200,
-            data=poll_data
+            params=poll_params
         )
         if success and 'poll_id' in response:
             self.poll_id = response['poll_id']
