@@ -111,8 +111,46 @@ function App() {
     }
   };
 
-  // Load room status
-  const loadRoomStatus = async (roomId) => {
+  // Load participants
+  const loadParticipants = async (roomId) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/rooms/${roomId}/participants`);
+      const data = await response.json();
+      setParticipants(data.participants);
+    } catch (error) {
+      console.error('Error loading participants:', error);
+    }
+  };
+
+  // Approve participant
+  const approveParticipant = async (participantId) => {
+    try {
+      await fetch(`${BACKEND_URL}/api/participants/${participantId}/approve`, {
+        method: 'POST'
+      });
+      if (roomData && roomData.room_id) {
+        loadParticipants(roomData.room_id);
+        loadRoomStatus(roomData.room_id);
+      }
+    } catch (error) {
+      alert('Error approving participant: ' + error.message);
+    }
+  };
+
+  // Deny participant
+  const denyParticipant = async (participantId) => {
+    try {
+      await fetch(`${BACKEND_URL}/api/participants/${participantId}/deny`, {
+        method: 'POST'
+      });
+      if (roomData && roomData.room_id) {
+        loadParticipants(roomData.room_id);
+        loadRoomStatus(roomData.room_id);
+      }
+    } catch (error) {
+      alert('Error denying participant: ' + error.message);
+    }
+  };
     try {
       const response = await fetch(`${BACKEND_URL}/api/rooms/${roomId}/status`);
       const data = await response.json();
