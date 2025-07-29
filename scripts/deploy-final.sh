@@ -326,25 +326,52 @@ install_portable_deployment() {
     
     # Installation des dépendances de base
     print_info "Installation des dépendances..."
-    apt-get update -y
-    apt-get install -y python3 python3-pip python3-venv nodejs npm mongodb
+    
+    # Update package list
+    apt-get update -y >> /var/log/secret-poll-deploy.log 2>&1
+    
+    # Install basic dependencies
+    apt-get install -y curl wget git python3 python3-pip python3-venv >> /var/log/secret-poll-deploy.log 2>&1
+    
+    # Install Node.js 18
+    if ! node --version 2>/dev/null | grep -q "v18"; then
+        print_info "Installation de Node.js 18..."
+        curl -fsSL https://deb.nodesource.com/setup_18.x | bash - >> /var/log/secret-poll-deploy.log 2>&1
+        apt-get install -y nodejs >> /var/log/secret-poll-deploy.log 2>&1
+    fi
+    
+    # Install MongoDB
+    if ! systemctl is-active --quiet mongod 2>/dev/null; then
+        print_info "Installation de MongoDB..."
+        curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg >> /var/log/secret-poll-deploy.log 2>&1
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list >> /var/log/secret-poll-deploy.log 2>&1
+        apt-get update >> /var/log/secret-poll-deploy.log 2>&1
+        apt-get install -y mongodb-org >> /var/log/secret-poll-deploy.log 2>&1
+        systemctl enable mongod >> /var/log/secret-poll-deploy.log 2>&1
+        systemctl start mongod >> /var/log/secret-poll-deploy.log 2>&1
+    fi
     
     # Configuration backend
-    cd backend
-    python3 -m venv venv
+    print_info "Configuration du backend..."
+    cd "$INSTALL_DIR/backend"
+    python3 -m venv venv >> /var/log/secret-poll-deploy.log 2>&1
     source venv/bin/activate
-    pip install -r requirements.txt
+    pip install --upgrade pip >> /var/log/secret-poll-deploy.log 2>&1
+    pip install -r requirements.txt >> /var/log/secret-poll-deploy.log 2>&1
     cd ..
     
     # Configuration frontend
-    cd frontend
+    print_info "Configuration du frontend..."
+    cd "$INSTALL_DIR/frontend"
     if [[ -f yarn.lock ]]; then
-        npm install -g yarn
-        yarn install
-        yarn build
+        if ! command -v yarn &> /dev/null; then
+            npm install -g yarn >> /var/log/secret-poll-deploy.log 2>&1
+        fi
+        yarn install >> /var/log/secret-poll-deploy.log 2>&1
+        yarn build >> /var/log/secret-poll-deploy.log 2>&1
     else
-        npm install
-        npm run build
+        npm install >> /var/log/secret-poll-deploy.log 2>&1
+        npm run build >> /var/log/secret-poll-deploy.log 2>&1
     fi
     cd ..
     
