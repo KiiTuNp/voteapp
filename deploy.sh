@@ -294,7 +294,8 @@ collect_configuration() {
     
     # Repository configuration
     echo
-    REPO_URL=$(prompt_input "Git repository URL (leave empty if deploying from current directory)" "")
+    DEFAULT_REPO="https://github.com/KiiTuNp/voteapp.git"
+    REPO_URL=$(prompt_input "Git repository URL" "$DEFAULT_REPO")
     
     if [[ -n "$REPO_URL" ]]; then
         DEPLOY_BRANCH=$(prompt_input "Git branch to deploy" "main")
