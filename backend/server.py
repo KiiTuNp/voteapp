@@ -139,9 +139,14 @@ async def join_room(room_id: str):
         "organizer_name": room["organizer_name"]
     }
 
+class PollCreateRequest(BaseModel):
+    room_id: str
+    question: str
+    options: List[str]
+
 @app.post("/api/polls/create")
-async def create_poll(room_id: str, question: str, options: List[str]):
-    room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
+async def create_poll(request: PollCreateRequest):
+    room = rooms_collection.find_one({"room_id": request.room_id, "is_active": True})
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
     
@@ -149,9 +154,9 @@ async def create_poll(room_id: str, question: str, options: List[str]):
     
     poll = {
         "poll_id": poll_id,
-        "room_id": room_id,
-        "question": question,
-        "options": options,
+        "room_id": request.room_id,
+        "question": request.question,
+        "options": request.options,
         "is_active": False,
         "created_at": datetime.now()
     }
@@ -159,12 +164,12 @@ async def create_poll(room_id: str, question: str, options: List[str]):
     polls_collection.insert_one(poll)
     
     # Broadcast new poll to room
-    await manager.broadcast_to_room(room_id, {
+    await manager.broadcast_to_room(request.room_id, {
         "type": "new_poll",
         "poll": poll
     })
     
-    return {"poll_id": poll_id, "question": question, "options": options}
+    return {"poll_id": poll_id, "question": request.question, "options": request.options}
 
 @app.post("/api/polls/{poll_id}/start")
 async def start_poll(poll_id: str):
