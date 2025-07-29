@@ -602,10 +602,10 @@ function ParticipantView({ roomData, activePoll, hasVoted, voteResults, onVote, 
       {activePoll && !hasVoted && (
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Poll</h2>
-          <h3 className="text-xl text-gray-700 mb-6">{activePool.question}</h3>
+          <h3 className="text-xl text-gray-700 mb-6">{activePoll.question}</h3>
           
           <div className="space-y-3">
-            {activePool.options?.map((option, index) => (
+            {activePoll.options?.map((option, index) => (
               <button
                 key={index}
                 onClick={() => onVote(option)}
