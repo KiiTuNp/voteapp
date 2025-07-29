@@ -1119,6 +1119,10 @@ class SecretPollAPITester:
         print("🏢 TESTING CUSTOM ROOM ID FEATURES")
         print("="*50)
         
+        if not self.test_custom_room_id_validation():
+            print("❌ Custom room ID validation failed, stopping tests")
+            return False
+        
         if not self.test_create_room_with_custom_id():
             print("❌ Custom room ID creation failed, stopping tests")
             return False
