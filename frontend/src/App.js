@@ -18,84 +18,123 @@ function App() {
   const [participants, setParticipants] = useState([]);
   const [approvalStatus, setApprovalStatus] = useState(null);
 
-  // WebSocket connection
+  // Enhanced WebSocket with reconnection logic
   useEffect(() => {
     if (roomData && roomData.room_id) {
-      const websocket = new WebSocket(`${BACKEND_URL.replace('http', 'ws')}/api/ws/${roomData.room_id}`);
+      let websocket;
+      let reconnectAttempts = 0;
+      const maxReconnectAttempts = 5;
       
-      websocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        switch (data.type) {
-          case 'participant_update':
-            if (roomStatus) {
-              setRoomStatus(prev => ({
-                ...prev,
-                participant_count: data.participant_count
-              }));
+      const connectWebSocket = () => {
+        try {
+          const wsUrl = `${BACKEND_URL.replace('http', 'ws')}/api/ws/${roomData.room_id}`;
+          websocket = new WebSocket(wsUrl);
+          
+          websocket.onopen = () => {
+            console.log('WebSocket connected');
+            reconnectAttempts = 0;
+          };
+          
+          websocket.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              
+              switch (data.type) {
+                case 'participant_update':
+                  if (roomStatus) {
+                    setRoomStatus(prev => ({
+                      ...prev,
+                      participant_count: data.participant_count
+                    }));
+                  }
+                  break;
+                case 'poll_started':
+                  const newPoll = {
+                    poll_id: data.poll_id,
+                    question: data.question,
+                    options: data.options,
+                    timer_minutes: data.timer_minutes
+                  };
+                  setActivePolls(prev => [...prev, newPoll]);
+                  setHasVoted(prev => ({...prev, [data.poll_id]: false}));
+                  setVoteResults(prev => ({...prev, [data.poll_id]: {}}));
+                  
+                  // Start timer if specified
+                  if (data.timer_minutes) {
+                    const endTime = Date.now() + (data.timer_minutes * 60 * 1000);
+                    setPollTimers(prev => ({...prev, [data.poll_id]: endTime}));
+                  }
+                  break;
+                case 'poll_stopped':
+                  setActivePolls(prev => prev.filter(poll => poll.poll_id !== data.poll_id));
+                  break;
+                case 'poll_auto_stopped':
+                  setActivePolls(prev => prev.filter(poll => poll.poll_id !== data.poll_id));
+                  setPollTimers(prev => {
+                    const newTimers = {...prev};
+                    delete newTimers[data.poll_id];
+                    return newTimers;
+                  });
+                  break;
+                case 'participant_approved':
+                  if (data.participant_token === participantToken) {
+                    setApprovalStatus('approved');
+                  }
+                  break;
+                case 'participant_denied':
+                  if (data.participant_token === participantToken) {
+                    setApprovalStatus('denied');
+                  }
+                  break;
+                case 'vote_update':
+                  setVoteResults(prev => ({
+                    ...prev,
+                    [data.poll_id]: data.vote_counts
+                  }));
+                  // Also reload all polls to get updated data for organizer
+                  if (roomData && roomData.room_id) {
+                    loadAllPolls(roomData.room_id);
+                  }
+                  break;
+                default:
+                  break;
+              }
+            } catch (parseError) {
+              console.error('WebSocket message parse error:', parseError);
             }
-            break;
-          case 'poll_started':
-            const newPoll = {
-              poll_id: data.poll_id,
-              question: data.question,
-              options: data.options,
-              timer_minutes: data.timer_minutes
-            };
-            setActivePolls(prev => [...prev, newPoll]);
-            setHasVoted(prev => ({...prev, [data.poll_id]: false}));
-            setVoteResults(prev => ({...prev, [data.poll_id]: {}}));
+          };
+          
+          websocket.onclose = (event) => {
+            console.log('WebSocket disconnected', event);
             
-            // Start timer if specified
-            if (data.timer_minutes) {
-              const endTime = Date.now() + (data.timer_minutes * 60 * 1000);
-              setPollTimers(prev => ({...prev, [data.poll_id]: endTime}));
+            // Try to reconnect if not a normal closure
+            if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++;
+              console.log(`Attempting to reconnect... (${reconnectAttempts}/${maxReconnectAttempts})`);
+              setTimeout(connectWebSocket, 2000 * reconnectAttempts); // Exponential backoff
             }
-            break;
-          case 'poll_stopped':
-            setActivePolls(prev => prev.filter(poll => poll.poll_id !== data.poll_id));
-            // Keep timer for display until cleanup
-            break;
-          case 'poll_auto_stopped':
-            setActivePolls(prev => prev.filter(poll => poll.poll_id !== data.poll_id));
-            setPollTimers(prev => {
-              const newTimers = {...prev};
-              delete newTimers[data.poll_id];
-              return newTimers;
-            });
-            break;
-          case 'participant_approved':
-            if (data.participant_token === participantToken) {
-              setApprovalStatus('approved');
-            }
-            break;
-          case 'participant_denied':
-            if (data.participant_token === participantToken) {
-              setApprovalStatus('denied');
-            }
-            break;
-          case 'vote_update':
-            setVoteResults(prev => ({
-              ...prev,
-              [data.poll_id]: data.vote_counts
-            }));
-            // Also reload all polls to get updated data for organizer
-            if (roomData && roomData.room_id) {
-              loadAllPolls(roomData.room_id);
-            }
-            break;
-          default:
-            break;
+          };
+          
+          websocket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+          };
+          
+          setWs(websocket);
+          
+        } catch (wsError) {
+          console.error('WebSocket connection error:', wsError);
         }
       };
       
-      setWs(websocket);
+      connectWebSocket();
       
       return () => {
-        websocket.close();
+        if (websocket) {
+          websocket.close(1000, 'Component unmounting');
+        }
       };
     }
-  }, [roomData]);
+  }, [roomData, participantToken]);
 
   // Create Room (Organizer)
   const createRoom = async (organizerName, customRoomId = '') => {
