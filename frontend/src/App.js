@@ -271,7 +271,7 @@ function App() {
       <div className="min-h-screen bg-gray-50">
         <ParticipantView 
           roomData={roomData}
-          activePool={activePool}
+          activePoll={activePoll}
           hasVoted={hasVoted}
           voteResults={voteResults}
           onVote={vote}
