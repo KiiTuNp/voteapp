@@ -554,11 +554,38 @@ function OrganizerCard({ onCreateRoom }) {
 function ParticipantCard({ onJoinRoom }) {
   const [roomId, setRoomId] = useState('');
   const [participantName, setParticipantName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (roomId.trim() && participantName.trim()) {
-      onJoinRoom(roomId.trim().toUpperCase(), participantName.trim());
+    
+    // Validate inputs
+    const trimmedRoomId = roomId.trim().toUpperCase();
+    const trimmedName = participantName.trim();
+    
+    if (!trimmedRoomId) {
+      alert('Please enter a Room ID');
+      return;
+    }
+    
+    if (!trimmedName) {
+      alert('Please enter your name');
+      return;
+    }
+    
+    if (trimmedName.length < 2) {
+      alert('Name must be at least 2 characters long');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      await onJoinRoom(trimmedRoomId, trimmedName);
+    } catch (error) {
+      console.error('Join room error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -574,17 +601,23 @@ function ParticipantCard({ onJoinRoom }) {
         <p className="text-gray-600">Enter your details to participate</p>
       </div>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
           <input
             type="text"
             value={participantName}
             onChange={(e) => setParticipantName(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+              participantName.trim().length >= 2 ? 'border-gray-300' : 'border-red-300'
+            }`}
             placeholder="Enter your name"
-            required
+            disabled={isSubmitting}
+            maxLength={50}
           />
+          {participantName.trim().length > 0 && participantName.trim().length < 2 && (
+            <p className="text-red-500 text-xs mt-1">Name must be at least 2 characters</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Room ID</label>
@@ -592,18 +625,27 @@ function ParticipantCard({ onJoinRoom }) {
             type="text"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value.toUpperCase())}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-lg font-mono"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-lg font-mono ${
+              roomId.trim().length >= 3 ? 'border-gray-300' : 'border-red-300'
+            }`}
             placeholder="Enter Room ID"
-            maxLength={8}
-            required
+            disabled={isSubmitting}
+            maxLength={10}
           />
+          {roomId.trim().length > 0 && roomId.trim().length < 3 && (
+            <p className="text-red-500 text-xs mt-1">Room ID must be at least 3 characters</p>
+          )}
         </div>
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium"
+          disabled={isSubmitting || !roomId.trim() || !participantName.trim() || participantName.trim().length < 2}
+          className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          Join Room
+          {isSubmitting ? '⏳ Joining...' : 'Join Room'}
         </button>
+        <p className="text-xs text-gray-500 text-center">
+          💡 You can join and participate even while polls are active
+        </p>
       </form>
     </div>
   );
