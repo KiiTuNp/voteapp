@@ -400,6 +400,11 @@ function OrganizerCard({ onCreateRoom }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (organizerName.trim()) {
+      // Validate custom room ID if provided
+      if (customRoomId && customRoomId.length < 3) {
+        alert('Custom room ID must be at least 3 characters long');
+        return;
+      }
       onCreateRoom(organizerName.trim(), customRoomId.trim());
     }
   };
