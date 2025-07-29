@@ -151,6 +151,21 @@ class SecretPollAPITester:
         print(f"\n📊 Custom ID Validation Results: {passed_tests}/{total_tests} passed")
         return passed_tests == total_tests
 
+    def test_duplicate_custom_room_id(self):
+        """Test creating room with duplicate custom ID (should fail)"""
+        if not self.custom_room_id:
+            print("❌ No custom room ID available for duplicate test")
+            return False
+            
+        success, response = self.run_test(
+            "Create Room with Duplicate Custom ID (Should Fail)",
+            "POST",
+            "api/rooms/create",
+            400,  # Should fail with 400 Bad Request
+            params={"organizer_name": "Another Organizer", "custom_room_id": self.custom_room_id}
+        )
+        return success
+
     def test_create_poll_with_timer(self):
         """Test creating a poll with auto-stop timer"""
         if not self.room_id:
