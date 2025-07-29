@@ -60,6 +60,55 @@ class SecretPollAPITester:
             print(f"❌ Failed - Error: {str(e)}")
             return False, {}
 
+    def test_create_poll_with_custom_request(self):
+        """Test creating a poll with custom request handling"""
+        if not self.room_id:
+            print("❌ No room ID available for poll creation test")
+            return False
+            
+        # Try sending as form data with multiple options
+        url = f"{self.base_url}/api/polls/create"
+        
+        self.tests_run += 1
+        print(f"\n🔍 Testing Create Poll (Custom)...")
+        print(f"   URL: POST {url}")
+        
+        try:
+            # Try with multiple options parameters
+            params = {
+                'room_id': self.room_id,
+                'question': 'What is your favorite color?',
+                'options': ['Red', 'Blue', 'Green', 'Yellow']
+            }
+            
+            response = requests.post(url, params=params)
+            
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
+                try:
+                    response_data = response.json()
+                    print(f"   Response: {response_data}")
+                    if 'poll_id' in response_data:
+                        self.poll_id = response_data['poll_id']
+                        print(f"   Created poll with ID: {self.poll_id}")
+                    return True
+                except:
+                    return True
+            else:
+                print(f"❌ Failed - Expected 200, got {response.status_code}")
+                try:
+                    error_data = response.json()
+                    print(f"   Error Response: {error_data}")
+                except:
+                    print(f"   Error Text: {response.text}")
+                return False
+
+        except Exception as e:
+            print(f"❌ Failed - Error: {str(e)}")
+            return False
+
     def test_health_check(self):
         """Test health check endpoint"""
         success, response = self.run_test(
