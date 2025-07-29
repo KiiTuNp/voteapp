@@ -1069,7 +1069,7 @@ function ParticipantView({ roomData, activePolls, allPolls, hasVoted, approvalSt
               <h3 className="text-xl text-gray-700 mb-6">{poll.question}</h3>
               
               {!hasVoted[poll.poll_id] ? (
-                // Voting interface with live results
+                // Voting interface WITHOUT showing results
                 <div>
                   <div className="space-y-3 mb-6">
                     {poll.options?.map((option, index) => (
@@ -1080,34 +1080,16 @@ function ParticipantView({ roomData, activePolls, allPolls, hasVoted, approvalSt
                       >
                         <div className="flex justify-between items-center">
                           <span className="font-medium">{option}</span>
-                          <span className="text-gray-600 text-sm">
-                            {voteResults[poll.poll_id]?.[option] || 0} votes
-                          </span>
+                          {/* NO vote counts shown before voting */}
                         </div>
-                        {/* Live progress bar */}
-                        {voteResults[poll.poll_id] && (
-                          <div className="mt-2">
-                            <div className="w-full bg-gray-200 rounded-full h-1">
-                              <div 
-                                className="bg-blue-400 h-1 rounded-full transition-all duration-300"
-                                style={{ 
-                                  width: `${
-                                    Object.values(voteResults[poll.poll_id]).reduce((sum, count) => sum + count, 0) > 0
-                                      ? ((voteResults[poll.poll_id][option] || 0) / 
-                                         Object.values(voteResults[poll.poll_id]).reduce((sum, count) => sum + count, 0) * 100)
-                                      : 0
-                                  }%` 
-                                }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
                       </button>
                     ))}
                   </div>
-                  <p className="text-sm text-gray-600 text-center">
-                    👆 Click an option to vote • Results update in real-time
-                  </p>
+                  <div className="p-3 bg-blue-50 rounded-lg text-center">
+                    <p className="text-blue-800 text-sm font-medium">
+                      🗳️ Make your choice • Results will be shown after you vote
+                    </p>
+                  </div>
                 </div>
               ) : (
                 // Results display after voting
