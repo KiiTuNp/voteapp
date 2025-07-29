@@ -385,6 +385,7 @@ function OrganizerDashboard({
   roomData, 
   roomStatus, 
   activePoll, 
+  createdPolls,
   voteResults, 
   onCreatePoll, 
   onStartPoll, 
