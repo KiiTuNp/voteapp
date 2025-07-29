@@ -105,10 +105,10 @@ confirm() {
         response=${response:-$default}
         
         case "$response" in
-            [Yy]|[Oo]|[Yy][Ee][Ss]|[Oo][Uu][Ii])
+            [Yy]|[Oo]|[Yy][Ee][Ss]|[Oo][Uu][Ii]|y|o|Y|O)
                 return 0
                 ;;
-            [Nn]|[Nn][Oo]|[Nn][Oo][Nn])
+            [Nn]|[Nn][Oo]|[Nn][Oo][Nn]|n|N)
                 return 1
                 ;;
             *)
