@@ -303,7 +303,65 @@ async def get_room_status(room_id: str):
         "active_poll": active_poll
     }
 
-@app.get("/api/rooms/{room_id}/report")
+@app.get("/api/rooms/{room_id}/participants")
+async def get_participants(room_id: str):
+    room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    participants = list(participants_collection.find({"room_id": room_id}))
+    
+    # Clean up participants for JSON serialization
+    clean_participants = []
+    for p in participants:
+        clean_participants.append({
+            "participant_id": p["participant_id"],
+            "participant_name": p["participant_name"],
+            "approval_status": p["approval_status"],
+            "joined_at": p["joined_at"].isoformat()
+        })
+    
+    return {"participants": clean_participants}
+
+@app.post("/api/participants/{participant_id}/approve")
+async def approve_participant(participant_id: str):
+    participant = participants_collection.find_one({"participant_id": participant_id})
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    
+    participants_collection.update_one(
+        {"participant_id": participant_id},
+        {"$set": {"approval_status": "approved"}}
+    )
+    
+    # Broadcast approval to participant
+    await manager.broadcast_to_room(participant["room_id"], {
+        "type": "participant_approved",
+        "participant_token": participant["participant_token"],
+        "participant_name": participant["participant_name"]
+    })
+    
+    return {"message": "Participant approved"}
+
+@app.post("/api/participants/{participant_id}/deny")
+async def deny_participant(participant_id: str):
+    participant = participants_collection.find_one({"participant_id": participant_id})
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    
+    participants_collection.update_one(
+        {"participant_id": participant_id},
+        {"$set": {"approval_status": "denied"}}
+    )
+    
+    # Broadcast denial to participant
+    await manager.broadcast_to_room(participant["room_id"], {
+        "type": "participant_denied",
+        "participant_token": participant["participant_token"],
+        "participant_name": participant["participant_name"]
+    })
+    
+    return {"message": "Participant denied"}
 async def generate_report(room_id: str):
     room = rooms_collection.find_one({"room_id": room_id})
     if not room:
