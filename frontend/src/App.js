@@ -363,15 +363,15 @@ function App() {
     }
   };
 
-  // Generate Report
+  // Enhanced report generation with multiple export options
   const generateReport = async () => {
     try {
       const confirmGenerate = window.confirm(
-        '📄 Generate PDF Report?\n\n' +
+        '📊 Export Meeting Data?\n\n' +
         'This will:\n' +
-        '• Create a comprehensive PDF report with all meeting data\n' +
-        '• Download the report to your computer\n' +
-        '• Permanently delete ALL meeting data for security\n\n' +
+        '• Generate a complete meeting report\n' +
+        '• Export data in multiple formats for reliability\n' +
+        '• Permanently delete ALL meeting data after successful export\n\n' +
         'Continue?'
       );
       
@@ -379,60 +379,122 @@ function App() {
         return;
       }
       
-      // Show loading state  
-      console.log('Starting PDF generation...');
+      console.log('Starting report generation...');
       
-      // Generate and download PDF report
-      const response = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/report`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Server error: ${response.status}`);
-      }
-      
-      // Verify it's actually a PDF
-      const contentType = response.headers.get('Content-Type');
-      if (!contentType || !contentType.includes('application/pdf')) {
-        throw new Error('Server did not return a PDF file');
-      }
-      
-      // Get the PDF blob
-      const blob = await response.blob();
-      
-      if (blob.size === 0) {
-        throw new Error('PDF file is empty');
-      }
-      
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      
-      // Extract filename from response headers if available
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `poll_report_${roomData.room_id}_${new Date().toISOString().slice(0,19).replace(/[T:]/g, '_')}.pdf`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
+      // Method 1: Try PDF download first
+      let pdfSuccess = false;
+      try {
+        const pdfResponse = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/report`);
+        
+        if (pdfResponse.ok && pdfResponse.headers.get('Content-Type')?.includes('application/pdf')) {
+          const blob = await pdfResponse.blob();
+          
+          if (blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `poll_report_${roomData.room_id}_${new Date().toISOString().slice(0,19).replace(/[T:]/g, '_')}.pdf`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            pdfSuccess = true;
+            console.log('PDF download successful');
+          }
         }
+      } catch (pdfError) {
+        console.warn('PDF download failed:', pdfError);
       }
       
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
+      // Method 2: JSON backup export (always generate)
+      let jsonSuccess = false;
+      try {
+        const jsonResponse = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/status`);
+        const pollsResponse = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/polls`);
+        const participantsResponse = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/participants`);
+        
+        if (jsonResponse.ok && pollsResponse.ok && participantsResponse.ok) {
+          const roomStatus = await jsonResponse.json();
+          const pollsData = await pollsResponse.json();
+          const participantsData = await participantsResponse.json();
+          
+          const completeReport = {
+            exported_at: new Date().toISOString(),
+            room_info: {
+              room_id: roomData.room_id,
+              organizer_name: roomData.organizer_name,
+              participant_count: roomStatus.participant_count,
+              approved_count: roomStatus.approved_count,
+              total_polls: roomStatus.total_polls
+            },
+            participants: participantsData.participants.map(p => ({
+              name: p.participant_name,
+              approval_status: p.approval_status,
+              joined_at: p.joined_at
+            })),
+            polls: pollsData.polls.map(poll => ({
+              question: poll.question,
+              options: poll.options,
+              vote_counts: poll.vote_counts,
+              total_votes: poll.total_votes,
+              was_active: poll.is_active,
+              created_at: poll.created_at
+            }))
+          };
+          
+          // Download as JSON
+          const jsonBlob = new Blob([JSON.stringify(completeReport, null, 2)], { type: 'application/json' });
+          const jsonUrl = URL.createObjectURL(jsonBlob);
+          const jsonA = document.createElement('a');
+          jsonA.href = jsonUrl;
+          jsonA.download = `poll_data_${roomData.room_id}_${new Date().toISOString().slice(0,19).replace(/[T:]/g, '_')}.json`;
+          jsonA.style.display = 'none';
+          document.body.appendChild(jsonA);
+          jsonA.click();
+          document.body.removeChild(jsonA);
+          URL.revokeObjectURL(jsonUrl);
+          jsonSuccess = true;
+          console.log('JSON backup successful');
+        }
+      } catch (jsonError) {
+        console.error('JSON export failed:', jsonError);
+      }
       
-      // Force download
-      a.click();
+      // Method 3: Text report as final fallback
+      let textSuccess = false;
+      try {
+        const textReport = generateTextReport();
+        const textBlob = new Blob([textReport], { type: 'text/plain' });
+        const textUrl = URL.createObjectURL(textBlob);
+        const textA = document.createElement('a');
+        textA.href = textUrl;
+        textA.download = `poll_report_${roomData.room_id}_${new Date().toISOString().slice(0,19).replace(/[T:]/g, '_')}.txt`;
+        textA.style.display = 'none';
+        document.body.appendChild(textA);
+        textA.click();
+        document.body.removeChild(textA);
+        URL.revokeObjectURL(textUrl);
+        textSuccess = true;
+        console.log('Text report successful');
+      } catch (textError) {
+        console.error('Text export failed:', textError);
+      }
       
-      // Clean up immediately
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Check if at least one export method succeeded
+      if (!pdfSuccess && !jsonSuccess && !textSuccess) {
+        throw new Error('All export methods failed. Please try again or contact support.');
+      }
       
-      // Show immediate success message
-      alert(`📄 PDF report "${filename}" has been downloaded!\n\n⏳ Cleaning up meeting data...`);
+      // Show success message
+      const methods = [];
+      if (pdfSuccess) methods.push('PDF');
+      if (jsonSuccess) methods.push('JSON data');  
+      if (textSuccess) methods.push('Text report');
       
-      // Wait longer for download to complete, then cleanup data
+      alert(`✅ Report exported successfully!\n\nFormats: ${methods.join(', ')}\n\n⏳ Cleaning up meeting data...`);
+      
+      // Wait for downloads to complete, then cleanup
       setTimeout(async () => {
         try {
           const cleanupResponse = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/cleanup`, {
@@ -456,21 +518,67 @@ function App() {
         } catch (cleanupError) {
           console.error('Error during cleanup:', cleanupError);
           alert(
-            '⚠️ PDF downloaded successfully, but there was an issue cleaning up data.\n\n' +
-            'Please contact support if you need to ensure data deletion.\n\n' +
+            '⚠️ Data exported successfully, but there was an issue cleaning up server data.\n\n' +
+            'Please contact support to ensure complete data deletion.\n\n' +
             `Error: ${cleanupError.message}`
           );
         }
-      }, 3000); // Increased delay to ensure download completes
+      }, 5000); // 5 second delay for downloads
       
     } catch (error) {
-      console.error('PDF generation error:', error);
+      console.error('Report generation error:', error);
       alert(
-        '❌ Error generating PDF report:\n\n' +
+        '❌ Error exporting meeting data:\n\n' +
         `${error.message}\n\n` +
         'Please try again. If the problem persists, contact support.'
       );
     }
+  };
+
+  // Generate text report as fallback
+  const generateTextReport = () => {
+    const timestamp = new Date().toLocaleString();
+    let report = `POLL MEETING REPORT\n`;
+    report += `========================\n`;
+    report += `Room ID: ${roomData.room_id}\n`;
+    report += `Organizer: ${roomData.organizer_name}\n`;
+    report += `Generated: ${timestamp}\n`;
+    report += `Participants: ${roomStatus?.participant_count || 0}\n`;
+    report += `Approved: ${roomStatus?.approved_count || 0}\n\n`;
+    
+    // Add participant list
+    if (participants.length > 0) {
+      report += `PARTICIPANTS:\n`;
+      report += `-------------\n`;
+      participants.forEach((p, i) => {
+        report += `${i + 1}. ${p.participant_name} (${p.approval_status})\n`;
+      });
+      report += `\n`;
+    }
+    
+    // Add poll results
+    if (allPolls.length > 0) {
+      report += `POLL RESULTS:\n`;
+      report += `-------------\n`;
+      allPolls.forEach((poll, i) => {
+        report += `\nPoll ${i + 1}: ${poll.question}\n`;
+        report += `Total Votes: ${poll.total_votes || 0}\n`;
+        if (poll.total_votes > 0) {
+          poll.options.forEach(option => {
+            const count = poll.vote_counts?.[option] || 0;
+            const percentage = poll.total_votes > 0 ? ((count / poll.total_votes) * 100).toFixed(1) : 0;
+            report += `  ${option}: ${count} votes (${percentage}%)\n`;
+          });
+        } else {
+          report += `  No votes recorded\n`;
+        }
+      });
+    } else {
+      report += `No polls were created.\n`;
+    }
+    
+    report += `\n---\nReport generated by Secret Poll System`;
+    return report;
   };
 
   // Home View
