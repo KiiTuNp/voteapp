@@ -124,20 +124,35 @@ confirm_action() {
         fi
     fi
     
-    if [[ "$default" == "y" ]]; then
-        echo -e "${YELLOW}$message [Y/n]:${NC} "
-    else
-        echo -e "${YELLOW}$message [y/N]:${NC} "
-    fi
-    
-    read -r response
-    response=${response:-$default}
-    
-    if [[ "$response" =~ ^[Yy]$ ]]; then
-        return 0
-    else
-        return 1
-    fi
+    # Interactive mode
+    while true; do
+        if [[ "$default" == "y" ]]; then
+            echo -ne "${YELLOW}$message [Y/n]: ${NC}"
+        else
+            echo -ne "${YELLOW}$message [y/N]: ${NC}"
+        fi
+        
+        # Read from stdin properly
+        read -r response < /dev/tty
+        
+        # Use default if empty
+        if [[ -z "$response" ]]; then
+            response="$default"
+        fi
+        
+        case "$response" in
+            [Yy]|[Yy][Ee][Ss])
+                return 0
+                ;;
+            [Nn]|[Nn][Oo])
+                return 1
+                ;;
+            *)
+                echo -e "${RED}Please answer yes (y) or no (n).${NC}"
+                continue
+                ;;
+        esac
+    done
 }
 
 prompt_input() {
