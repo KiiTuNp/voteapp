@@ -803,27 +803,53 @@ function OrganizerDashboard({
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Poll Management</h2>
           <div className="space-y-4">
             {allPolls.map((poll) => (
-              <div key={poll.poll_id} className={`p-4 rounded-lg border-2 ${poll.is_active ? 'border-green-500 bg-green-50' : 'border-gray-400 bg-gray-100'}`}>
+              <div key={poll.poll_id} className={`p-4 rounded-lg border-2 ${
+                poll.is_active 
+                  ? 'border-green-500 bg-green-50' 
+                  : poll.total_votes > 0 
+                    ? 'border-gray-400 bg-gray-100' 
+                    : 'border-gray-300 bg-gray-50'
+              }`}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h4 className="font-semibold text-gray-800 mb-2">
-                      {poll.question}
-                      {poll.is_active && <span className="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded-full">ACTIVE</span>}
-                      {!poll.is_active && poll.total_votes > 0 && <span className="ml-2 px-2 py-1 bg-gray-600 text-white text-xs rounded-full">CLOSED</span>}
-                    </h4>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold text-gray-800">
+                        {poll.question}
+                      </h4>
+                      {poll.is_active && (
+                        <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">ACTIVE</span>
+                      )}
+                      {!poll.is_active && poll.total_votes > 0 && (
+                        <span className="px-2 py-1 bg-gray-600 text-white text-xs rounded-full">CLOSED</span>
+                      )}
+                      {poll.is_active && pollTimers[poll.poll_id] && (
+                        <PollTimer endTime={pollTimers[poll.poll_id]} />
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 mb-2">Options: {poll.options.join(', ')}</p>
-                    <p className="text-sm text-gray-500">Total votes: {poll.total_votes || 0}</p>
+                    <p className="text-sm text-gray-500 mb-2">Total votes: {poll.total_votes || 0}</p>
                     
                     {/* Show live vote breakdown */}
                     {poll.total_votes > 0 && (
-                      <div className="mt-2 space-y-1">
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm font-medium text-gray-700">Live Results:</p>
                         {poll.options.map(option => {
                           const count = poll.vote_counts[option] || 0;
                           const percentage = poll.total_votes > 0 ? ((count / poll.total_votes) * 100).toFixed(1) : 0;
                           return (
-                            <div key={option} className="flex justify-between text-sm">
-                              <span>{option}:</span>
-                              <span>{count} votes ({percentage}%)</span>
+                            <div key={option} className="bg-white rounded p-2">
+                              <div className="flex justify-between text-sm mb-1">
+                                <span>{option}:</span>
+                                <span className="font-medium">{count} votes ({percentage}%)</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all duration-300 ${
+                                    poll.is_active ? 'bg-green-600' : 'bg-gray-600'
+                                  }`}
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
                             </div>
                           );
                         })}
@@ -848,7 +874,7 @@ function OrganizerDashboard({
                       </button>
                     ) : (
                       <span className="px-3 py-1 text-xs text-gray-500 bg-gray-200 rounded">
-                        Closed
+                        Final Results
                       </span>
                     )}
                   </div>
