@@ -318,11 +318,15 @@ function App() {
           roomStatus={roomStatus}
           activePoll={activePoll}
           createdPolls={createdPolls}
+          participants={participants}
           voteResults={voteResults}
           onCreatePoll={createPoll}
           onStartPoll={startPoll}
           onStopPoll={stopPoll}
           onGenerateReport={generateReport}
+          onApproveParticipant={approveParticipant}
+          onDenyParticipant={denyParticipant}
+          onLoadParticipants={loadParticipants}
           onBack={() => setCurrentView('home')}
         />
       </div>
