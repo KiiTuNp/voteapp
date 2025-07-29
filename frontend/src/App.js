@@ -151,6 +151,9 @@ function App() {
       alert('Error denying participant: ' + error.message);
     }
   };
+
+  // Load room status
+  const loadRoomStatus = async (roomId) => {
     try {
       const response = await fetch(`${BACKEND_URL}/api/rooms/${roomId}/status`);
       const data = await response.json();
