@@ -573,22 +573,31 @@ create_management_scripts() {
 #!/bin/bash
 echo "Démarrage de Secret Poll..."
 
+# Vérifier MongoDB
+if ! systemctl is-active --quiet mongod 2>/dev/null; then
+    echo "Démarrage de MongoDB..."
+    sudo systemctl start mongod
+fi
+
 # Backend
-cd backend
+cd "\$(dirname "\$0")/backend"
 source venv/bin/activate
-python server.py &
+export MONGO_URL="mongodb://localhost:27017/poll_app"
+export PORT="8001"
+nohup python server.py > ../backend.log 2>&1 &
 echo \$! > ../backend.pid
 cd ..
 
 # Frontend (serveur simple)
 cd frontend/build
-python3 -m http.server 3000 &
+nohup python3 -m http.server 3000 > ../../frontend.log 2>&1 &
 echo \$! > ../../frontend.pid
 cd ../..
 
 echo "Secret Poll démarré!"
 echo "Backend: http://$DOMAIN:8001"
 echo "Frontend: http://$DOMAIN:3000"
+echo "Logs: backend.log, frontend.log"
 EOF
 
     # Script d'arrêt
@@ -598,12 +607,14 @@ echo "Arrêt de Secret Poll..."
 
 if [[ -f backend.pid ]]; then
     kill $(cat backend.pid) 2>/dev/null || true
-    rm backend.pid
+    rm -f backend.pid
+    echo "Backend arrêté"
 fi
 
 if [[ -f frontend.pid ]]; then
     kill $(cat frontend.pid) 2>/dev/null || true
-    rm frontend.pid
+    rm -f frontend.pid
+    echo "Frontend arrêté"
 fi
 
 echo "Secret Poll arrêté."
@@ -613,21 +624,61 @@ EOF
     cat > status.sh << 'EOF'
 #!/bin/bash
 echo "État de Secret Poll:"
+echo "==================="
 
-if [[ -f backend.pid ]] && kill -0 $(cat backend.pid) 2>/dev/null; then
-    echo "  Backend: ✅ Démarré (PID: $(cat backend.pid))"
+# MongoDB
+if systemctl is-active --quiet mongod 2>/dev/null; then
+    echo "  MongoDB: ✅ Actif"
 else
-    echo "  Backend: ❌ Arrêté"
+    echo "  MongoDB: ❌ Inactif"
 fi
 
-if [[ -f frontend.pid ]] && kill -0 $(cat frontend.pid) 2>/dev/null; then
-    echo "  Frontend: ✅ Démarré (PID: $(cat frontend.pid))"
+# Backend
+if [[ -f backend.pid ]] && kill -0 $(cat backend.pid) 2>/dev/null; then
+    echo "  Backend: ✅ Actif (PID: $(cat backend.pid))"
+    echo "    URL: http://localhost:8001"
+    echo "    Health: $(curl -s http://localhost:8001/api/health 2>/dev/null || echo "Non accessible")"
 else
-    echo "  Frontend: ❌ Arrêté"
+    echo "  Backend: ❌ Inactif"
+fi
+
+# Frontend
+if [[ -f frontend.pid ]] && kill -0 $(cat frontend.pid) 2>/dev/null; then
+    echo "  Frontend: ✅ Actif (PID: $(cat frontend.pid))"
+    echo "    URL: http://localhost:3000"
+else
+    echo "  Frontend: ❌ Inactif"
+fi
+
+echo ""
+echo "Logs disponibles:"
+[[ -f backend.log ]] && echo "  - backend.log ($(wc -l < backend.log) lignes)"
+[[ -f frontend.log ]] && echo "  - frontend.log ($(wc -l < frontend.log) lignes)"
+EOF
+
+    # Script de logs
+    cat > logs.sh << 'EOF'
+#!/bin/bash
+echo "=== Logs Secret Poll ==="
+
+if [[ "$1" == "backend" ]]; then
+    echo "=== Backend Logs ==="
+    tail -f backend.log 2>/dev/null || echo "Pas de logs backend"
+elif [[ "$1" == "frontend" ]]; then
+    echo "=== Frontend Logs ==="
+    tail -f frontend.log 2>/dev/null || echo "Pas de logs frontend"
+else
+    echo "Usage: ./logs.sh [backend|frontend]"
+    echo ""
+    echo "Dernières lignes backend:"
+    tail -5 backend.log 2>/dev/null || echo "Pas de logs backend"
+    echo ""
+    echo "Dernières lignes frontend:"
+    tail -5 frontend.log 2>/dev/null || echo "Pas de logs frontend"
 fi
 EOF
 
-    chmod +x {start,stop,status}.sh
+    chmod +x {start,stop,status,logs}.sh
     print_success "Scripts de gestion créés"
 }
 
