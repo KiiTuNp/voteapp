@@ -383,7 +383,7 @@ async def deny_participant(participant_id: str):
     return {"message": "Participant denied"}
 
 @app.get("/api/rooms/{room_id}/report")
-async def generate_report(room_id: str):
+async def generate_pdf_report(room_id: str):
     room = rooms_collection.find_one({"room_id": room_id})
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
@@ -391,32 +391,198 @@ async def generate_report(room_id: str):
     # Get all polls for this room
     polls = list(polls_collection.find({"room_id": room_id}))
     
-    report_data = {
-        "room_id": room_id,
-        "organizer_name": room["organizer_name"],
-        "generated_at": datetime.now().isoformat(),
-        "participant_count": participants_collection.count_documents({"room_id": room_id}),
-        "polls": []
-    }
+    # Get all participants
+    participants = list(participants_collection.find({"room_id": room_id}))
     
-    for poll in polls:
-        vote_counts = {}
-        for option in poll["options"]:
-            count = votes_collection.count_documents({
-                "poll_id": poll["poll_id"],
-                "selected_option": option
-            })
-            vote_counts[option] = count
+    # Create PDF in memory
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    # Container for the 'Flowable' objects
+    story = []
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=1,  # Center alignment
+        textColor=colors.darkblue
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        spaceAfter=12,
+        textColor=colors.darkblue
+    )
+    
+    # Title
+    story.append(Paragraph("Secret Poll Meeting Report", title_style))
+    story.append(Spacer(1, 20))
+    
+    # Meeting Information
+    story.append(Paragraph("Meeting Information", heading_style))
+    meeting_info = [
+        ['Room ID:', room_id],
+        ['Organizer:', room["organizer_name"]],
+        ['Generated:', datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        ['Total Participants:', str(len(participants))]
+    ]
+    
+    meeting_table = Table(meeting_info, colWidths=[2*inch, 4*inch])
+    meeting_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(meeting_table)
+    story.append(Spacer(1, 20))
+    
+    # Participants Section
+    story.append(Paragraph("Registered Participants", heading_style))
+    
+    # Separate participants by approval status
+    approved_participants = [p for p in participants if p["approval_status"] == "approved"]
+    pending_participants = [p for p in participants if p["approval_status"] == "pending"]
+    denied_participants = [p for p in participants if p["approval_status"] == "denied"]
+    
+    if approved_participants:
+        story.append(Paragraph("<b>Approved Participants:</b>", styles['Normal']))
+        participant_data = [['Name', 'Joined At', 'Status']]
+        for p in approved_participants:
+            participant_data.append([
+                p["participant_name"],
+                p["joined_at"].strftime("%H:%M:%S"),
+                "✓ Approved"
+            ])
         
-        poll_data = {
-            "question": poll["question"],
-            "options": poll["options"],
-            "results": vote_counts,
-            "total_votes": sum(vote_counts.values())
-        }
-        report_data["polls"].append(poll_data)
+        participant_table = Table(participant_data, colWidths=[2.5*inch, 1.5*inch, 1.5*inch])
+        participant_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(participant_table)
+        story.append(Spacer(1, 15))
     
-    return report_data
+    if pending_participants or denied_participants:
+        other_participants = []
+        if pending_participants:
+            other_participants.extend([(p["participant_name"], "⏳ Pending") for p in pending_participants])
+        if denied_participants:
+            other_participants.extend([(p["participant_name"], "❌ Denied") for p in denied_participants])
+        
+        if other_participants:
+            story.append(Paragraph("<b>Other Participants:</b>", styles['Normal']))
+            other_data = [['Name', 'Status']]
+            other_data.extend(other_participants)
+            
+            other_table = Table(other_data, colWidths=[3*inch, 2*inch])
+            other_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(other_table)
+            story.append(Spacer(1, 20))
+    
+    # Poll Results Section
+    if polls:
+        story.append(Paragraph("Poll Results", heading_style))
+        
+        for i, poll in enumerate(polls, 1):
+            story.append(Paragraph(f"<b>Poll {i}: {poll['question']}</b>", styles['Normal']))
+            
+            # Calculate vote results
+            vote_counts = {}
+            for option in poll["options"]:
+                count = votes_collection.count_documents({
+                    "poll_id": poll["poll_id"],
+                    "selected_option": option
+                })
+                vote_counts[option] = count
+            
+            total_votes = sum(vote_counts.values())
+            
+            if total_votes > 0:
+                # Create results table
+                results_data = [['Option', 'Votes', 'Percentage']]
+                for option in poll["options"]:
+                    count = vote_counts[option]
+                    percentage = (count / total_votes * 100) if total_votes > 0 else 0
+                    results_data.append([
+                        option,
+                        str(count),
+                        f"{percentage:.1f}%"
+                    ])
+                
+                results_data.append(['Total Votes', str(total_votes), '100.0%'])
+                
+                results_table = Table(results_data, colWidths=[2.5*inch, 1*inch, 1*inch])
+                results_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, -1), (-1, -1), colors.lightblue),
+                    ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                story.append(results_table)
+            else:
+                story.append(Paragraph("No votes recorded for this poll.", styles['Normal']))
+            
+            story.append(Spacer(1, 15))
+    else:
+        story.append(Paragraph("No polls were created in this meeting.", styles['Normal']))
+    
+    # Footer
+    story.append(Spacer(1, 30))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.grey,
+        alignment=1
+    )
+    story.append(Paragraph("This report was generated automatically by the Secret Poll system.", footer_style))
+    story.append(Paragraph("All participant data has been permanently deleted after report generation.", footer_style))
+    
+    # Build PDF
+    doc.build(story)
+    
+    # Get PDF data
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    # Create filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"poll_report_{room_id}_{timestamp}.pdf"
+    
+    return Response(
+        content=pdf_data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Type": "application/pdf"
+        }
+    )
 
 @app.delete("/api/rooms/{room_id}/cleanup")
 async def cleanup_room_data(room_id: str):
