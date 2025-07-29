@@ -326,6 +326,38 @@ async def get_room_status(room_id: str):
         "active_poll_count": len(active_polls)
     }
 
+@app.get("/api/rooms/{room_id}/polls")
+async def get_all_polls(room_id: str):
+    room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    polls = list(polls_collection.find({"room_id": room_id}))
+    
+    # Clean up polls and add vote counts
+    clean_polls = []
+    for poll in polls:
+        # Calculate vote results for each poll
+        vote_counts = {}
+        for option in poll["options"]:
+            count = votes_collection.count_documents({
+                "poll_id": poll["poll_id"],
+                "selected_option": option
+            })
+            vote_counts[option] = count
+        
+        clean_polls.append({
+            "poll_id": poll["poll_id"],
+            "question": poll["question"],
+            "options": poll["options"],
+            "is_active": poll["is_active"],
+            "created_at": poll["created_at"].isoformat(),
+            "vote_counts": vote_counts,
+            "total_votes": sum(vote_counts.values())
+        })
+    
+    return {"polls": clean_polls}
+
 @app.get("/api/rooms/{room_id}/participants")
 async def get_participants(room_id: str):
     room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
