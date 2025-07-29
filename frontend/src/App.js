@@ -35,17 +35,16 @@ function App() {
             }
             break;
           case 'poll_started':
-            setActivePoll({
+            setActivePolls(prev => [...prev, {
               poll_id: data.poll_id,
               question: data.question,
               options: data.options
-            });
-            setHasVoted(false);
-            setVoteResults({});
+            }]);
+            setHasVoted(prev => ({...prev, [data.poll_id]: false}));
+            setVoteResults(prev => ({...prev, [data.poll_id]: {}}));
             break;
           case 'poll_stopped':
-            setActivePoll(null);
-            setHasVoted(false);
+            setActivePolls(prev => prev.filter(poll => poll.poll_id !== data.poll_id));
             break;
           case 'participant_approved':
             if (data.participant_token === participantToken) {
