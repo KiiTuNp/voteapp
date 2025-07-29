@@ -484,7 +484,8 @@ function ParticipantCard({ onJoinRoom }) {
 function OrganizerDashboard({ 
   roomData, 
   roomStatus, 
-  activePoll, 
+  activePolls, 
+  allPolls,
   createdPolls,
   participants,
   voteResults, 
