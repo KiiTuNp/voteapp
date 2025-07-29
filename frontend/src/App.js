@@ -242,26 +242,56 @@ function App() {
   // Generate Report
   const generateReport = async () => {
     try {
+      // Generate and download PDF report
       const response = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/report`);
-      const reportData = await response.json();
       
-      // Create downloadable report
-      const reportText = generateReportText(reportData);
-      const blob = new Blob([reportText], { type: 'text/plain' });
+      if (!response.ok) {
+        throw new Error('Failed to generate report');
+      }
+      
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create download link
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `poll-report-${roomData.room_id}.txt`;
+      
+      // Extract filename from response headers if available
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `poll_report_${roomData.room_id}.pdf`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
-      // Clean up data after report is saved
-      await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/cleanup`, {
-        method: 'DELETE'
-      });
+      // Wait a moment for download to start, then cleanup data
+      setTimeout(async () => {
+        try {
+          await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/cleanup`, {
+            method: 'DELETE'
+          });
+          
+          alert('📄 PDF report downloaded successfully!\n🗑️ All meeting data has been permanently deleted for security.');
+          setCurrentView('home');
+          setRoomData(null);
+          setParticipants([]);
+          setCreatedPolls([]);
+          setRoomStatus(null);
+        } catch (cleanupError) {
+          console.error('Error during cleanup:', cleanupError);
+          alert('📄 Report downloaded, but there was an issue cleaning up data. Please contact support.');
+        }
+      }, 1000);
       
-      alert('Report downloaded and all data has been deleted!');
-      setCurrentView('home');
-      setRoomData(null);
     } catch (error) {
       alert('Error generating report: ' + error.message);
     }
