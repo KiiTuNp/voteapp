@@ -114,6 +114,16 @@ confirm_action() {
     local default="${2:-n}"
     local response
     
+    # Auto mode: use default
+    if [[ "$AUTO_MODE" == true ]]; then
+        echo -e "${YELLOW}$message [AUTO: $default]${NC}"
+        if [[ "$default" == "y" ]]; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+    
     if [[ "$default" == "y" ]]; then
         echo -e "${YELLOW}$message [Y/n]:${NC} "
     else
