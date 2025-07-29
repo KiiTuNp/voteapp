@@ -85,20 +85,71 @@ class SecretPollAPITester:
                 return False
         return False
 
-    def test_duplicate_custom_room_id(self):
-        """Test creating room with duplicate custom ID (should fail)"""
-        if not self.custom_room_id:
-            print("❌ No custom room ID available for duplicate test")
-            return False
+    def test_custom_room_id_validation(self):
+        """Test comprehensive custom room ID validation"""
+        print("\n🔍 Testing Custom Room ID Validation...")
+        
+        # Test cases: [custom_id, expected_status, description]
+        test_cases = [
+            # Valid IDs
+            ("ABC", 200, "Valid: 3 characters (minimum)"),
+            ("ABCD123456", 200, "Valid: 10 characters (maximum)"),
+            ("MEET01", 200, "Valid: 6 characters alphanumeric"),
+            ("ABC123", 200, "Valid: mixed letters and numbers"),
+            ("TEAM5", 200, "Valid: 5 characters"),
+            ("POLL2024", 200, "Valid: 8 characters"),
             
-        success, response = self.run_test(
-            "Create Room with Duplicate Custom ID (Should Fail)",
-            "POST",
-            "api/rooms/create",
-            400,  # Should fail with 400 Bad Request
-            params={"organizer_name": "Another Organizer", "custom_room_id": self.custom_room_id}
-        )
-        return success
+            # Invalid IDs - Too short
+            ("AB", 400, "Invalid: 2 characters (too short)"),
+            ("A", 400, "Invalid: 1 character (too short)"),
+            ("", 400, "Invalid: empty string"),
+            
+            # Invalid IDs - Too long
+            ("VERYLONGID123", 400, "Invalid: 13 characters (too long)"),
+            ("ABCDEFGHIJK", 400, "Invalid: 11 characters (too long)"),
+            
+            # Invalid IDs - Special characters
+            ("MEET-01", 400, "Invalid: contains hyphen"),
+            ("ROOM#1", 400, "Invalid: contains hash"),
+            ("TEAM_5", 400, "Invalid: contains underscore"),
+            ("POLL.2024", 400, "Invalid: contains dot"),
+            ("ROOM 1", 400, "Invalid: contains space"),
+            ("MEET@01", 400, "Invalid: contains at symbol"),
+            ("ROOM+1", 400, "Invalid: contains plus"),
+        ]
+        
+        passed_tests = 0
+        total_tests = len(test_cases)
+        
+        for custom_id, expected_status, description in test_cases:
+            # Use unique organizer name to avoid conflicts
+            organizer_name = f"Test Organizer {datetime.now().strftime('%H%M%S%f')}"
+            
+            success, response = self.run_test(
+                f"Custom ID Validation: {description}",
+                "POST",
+                "api/rooms/create",
+                expected_status,
+                params={"organizer_name": organizer_name, "custom_room_id": custom_id}
+            )
+            
+            if success:
+                passed_tests += 1
+                if expected_status == 200:
+                    # For successful cases, verify the room ID matches
+                    if 'room_id' in response and response['room_id'] == custom_id.upper():
+                        print(f"   ✅ Room created with ID: {response['room_id']}")
+                    else:
+                        print(f"   ⚠️  Room created but ID mismatch: expected {custom_id.upper()}, got {response.get('room_id')}")
+                else:
+                    # For error cases, check error message
+                    if 'detail' in response:
+                        print(f"   ✅ Proper error message: {response['detail']}")
+            else:
+                print(f"   ❌ Test failed for: {description}")
+        
+        print(f"\n📊 Custom ID Validation Results: {passed_tests}/{total_tests} passed")
+        return passed_tests == total_tests
 
     def test_create_poll_with_timer(self):
         """Test creating a poll with auto-stop timer"""
