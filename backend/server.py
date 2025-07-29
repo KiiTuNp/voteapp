@@ -1,75 +1,338 @@
-from fastapi import FastAPI, APIRouter
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Dict, Optional
+import pymongo
 import os
-import logging
-from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List
 import uuid
+import json
 from datetime import datetime
 
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
-
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
-
-# Create the main app without a prefix
+# Initialize FastAPI
 app = FastAPI()
 
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
-
-
-# Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
-
-# Include the router in the main app
-app.include_router(api_router)
-
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# MongoDB connection
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+client = pymongo.MongoClient(MONGO_URL)
+db = client.poll_app
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+# Collections
+rooms_collection = db.rooms
+polls_collection = db.polls
+votes_collection = db.votes
+participants_collection = db.participants
+
+# WebSocket connections manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, room_id: str):
+        await websocket.accept()
+        if room_id not in self.active_connections:
+            self.active_connections[room_id] = []
+        self.active_connections[room_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, room_id: str):
+        if room_id in self.active_connections:
+            self.active_connections[room_id].remove(websocket)
+
+    async def broadcast_to_room(self, room_id: str, message: dict):
+        if room_id in self.active_connections:
+            for connection in self.active_connections[room_id]:
+                try:
+                    await connection.send_text(json.dumps(message))
+                except:
+                    pass
+
+manager = ConnectionManager()
+
+# Pydantic models
+class Room(BaseModel):
+    room_id: str
+    organizer_name: str
+    created_at: datetime
+    is_active: bool = True
+
+class Poll(BaseModel):
+    poll_id: str
+    room_id: str
+    question: str
+    options: List[str]
+    is_active: bool = False
+    created_at: datetime
+
+class Vote(BaseModel):
+    vote_id: str
+    poll_id: str
+    room_id: str
+    participant_token: str
+    selected_option: str
+    voted_at: datetime
+
+class Participant(BaseModel):
+    participant_id: str
+    room_id: str
+    participant_token: str
+    joined_at: datetime
+
+# API Routes
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy"}
+
+@app.post("/api/rooms/create")
+async def create_room(organizer_name: str):
+    room_id = str(uuid.uuid4())[:8].upper()
+    
+    room = {
+        "room_id": room_id,
+        "organizer_name": organizer_name,
+        "created_at": datetime.now(),
+        "is_active": True
+    }
+    
+    rooms_collection.insert_one(room)
+    
+    return {"room_id": room_id, "organizer_name": organizer_name}
+
+@app.post("/api/rooms/join")
+async def join_room(room_id: str):
+    # Check if room exists and is active
+    room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found or inactive")
+    
+    # Generate participant token
+    participant_token = str(uuid.uuid4())
+    participant_id = str(uuid.uuid4())
+    
+    participant = {
+        "participant_id": participant_id,
+        "room_id": room_id,
+        "participant_token": participant_token,
+        "joined_at": datetime.now()
+    }
+    
+    participants_collection.insert_one(participant)
+    
+    # Broadcast participant count update
+    participant_count = participants_collection.count_documents({"room_id": room_id})
+    await manager.broadcast_to_room(room_id, {
+        "type": "participant_update",
+        "participant_count": participant_count
+    })
+    
+    return {
+        "participant_token": participant_token,
+        "room_id": room_id,
+        "organizer_name": room["organizer_name"]
+    }
+
+@app.post("/api/polls/create")
+async def create_poll(room_id: str, question: str, options: List[str]):
+    room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    poll_id = str(uuid.uuid4())
+    
+    poll = {
+        "poll_id": poll_id,
+        "room_id": room_id,
+        "question": question,
+        "options": options,
+        "is_active": False,
+        "created_at": datetime.now()
+    }
+    
+    polls_collection.insert_one(poll)
+    
+    # Broadcast new poll to room
+    await manager.broadcast_to_room(room_id, {
+        "type": "new_poll",
+        "poll": poll
+    })
+    
+    return {"poll_id": poll_id, "question": question, "options": options}
+
+@app.post("/api/polls/{poll_id}/start")
+async def start_poll(poll_id: str):
+    poll = polls_collection.find_one({"poll_id": poll_id})
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    
+    polls_collection.update_one(
+        {"poll_id": poll_id},
+        {"$set": {"is_active": True}}
+    )
+    
+    # Broadcast poll start
+    await manager.broadcast_to_room(poll["room_id"], {
+        "type": "poll_started",
+        "poll_id": poll_id,
+        "question": poll["question"],
+        "options": poll["options"]
+    })
+    
+    return {"message": "Poll started"}
+
+@app.post("/api/polls/{poll_id}/stop")
+async def stop_poll(poll_id: str):
+    poll = polls_collection.find_one({"poll_id": poll_id})
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    
+    polls_collection.update_one(
+        {"poll_id": poll_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    # Broadcast poll stop
+    await manager.broadcast_to_room(poll["room_id"], {
+        "type": "poll_stopped",
+        "poll_id": poll_id
+    })
+    
+    return {"message": "Poll stopped"}
+
+@app.post("/api/polls/{poll_id}/vote")
+async def vote(poll_id: str, participant_token: str, selected_option: str):
+    poll = polls_collection.find_one({"poll_id": poll_id, "is_active": True})
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found or inactive")
+    
+    # Check if participant already voted for this poll
+    existing_vote = votes_collection.find_one({
+        "poll_id": poll_id,
+        "participant_token": participant_token
+    })
+    
+    if existing_vote:
+        raise HTTPException(status_code=400, detail="Already voted")
+    
+    # Validate option
+    if selected_option not in poll["options"]:
+        raise HTTPException(status_code=400, detail="Invalid option")
+    
+    vote_id = str(uuid.uuid4())
+    
+    vote = {
+        "vote_id": vote_id,
+        "poll_id": poll_id,
+        "room_id": poll["room_id"],
+        "participant_token": participant_token,
+        "selected_option": selected_option,
+        "voted_at": datetime.now()
+    }
+    
+    votes_collection.insert_one(vote)
+    
+    # Broadcast vote count update
+    vote_counts = {}
+    for option in poll["options"]:
+        count = votes_collection.count_documents({
+            "poll_id": poll_id,
+            "selected_option": option
+        })
+        vote_counts[option] = count
+    
+    await manager.broadcast_to_room(poll["room_id"], {
+        "type": "vote_update",
+        "poll_id": poll_id,
+        "vote_counts": vote_counts,
+        "total_votes": sum(vote_counts.values())
+    })
+    
+    return {"message": "Vote recorded"}
+
+@app.get("/api/rooms/{room_id}/status")
+async def get_room_status(room_id: str):
+    room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    participant_count = participants_collection.count_documents({"room_id": room_id})
+    polls = list(polls_collection.find({"room_id": room_id}))
+    
+    # Get current active poll
+    active_poll = polls_collection.find_one({"room_id": room_id, "is_active": True})
+    
+    return {
+        "room_id": room_id,
+        "organizer_name": room["organizer_name"],
+        "participant_count": participant_count,
+        "total_polls": len(polls),
+        "active_poll": active_poll
+    }
+
+@app.get("/api/rooms/{room_id}/report")
+async def generate_report(room_id: str):
+    room = rooms_collection.find_one({"room_id": room_id})
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Get all polls for this room
+    polls = list(polls_collection.find({"room_id": room_id}))
+    
+    report_data = {
+        "room_id": room_id,
+        "organizer_name": room["organizer_name"],
+        "generated_at": datetime.now().isoformat(),
+        "participant_count": participants_collection.count_documents({"room_id": room_id}),
+        "polls": []
+    }
+    
+    for poll in polls:
+        vote_counts = {}
+        for option in poll["options"]:
+            count = votes_collection.count_documents({
+                "poll_id": poll["poll_id"],
+                "selected_option": option
+            })
+            vote_counts[option] = count
+        
+        poll_data = {
+            "question": poll["question"],
+            "options": poll["options"],
+            "results": vote_counts,
+            "total_votes": sum(vote_counts.values())
+        }
+        report_data["polls"].append(poll_data)
+    
+    return report_data
+
+@app.delete("/api/rooms/{room_id}/cleanup")
+async def cleanup_room_data(room_id: str):
+    # Delete all data for this room
+    rooms_collection.delete_many({"room_id": room_id})
+    polls_collection.delete_many({"room_id": room_id})
+    votes_collection.delete_many({"room_id": room_id})
+    participants_collection.delete_many({"room_id": room_id})
+    
+    return {"message": "Room data deleted successfully"}
+
+# WebSocket endpoint
+@app.websocket("/api/ws/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    await manager.connect(websocket, room_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Keep connection alive
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, room_id)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
