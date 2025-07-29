@@ -540,7 +540,7 @@ function OrganizerDashboard({
           <h3 className="text-xl font-semibold text-gray-800 mb-4">{activePoll.question}</h3>
           
           <div className="space-y-3">
-            {activePool.options?.map((option, index) => {
+            {activePoll.options?.map((option, index) => {
               const count = voteResults[option] || 0;
               const total = Object.values(voteResults).reduce((sum, count) => sum + count, 0);
               const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
