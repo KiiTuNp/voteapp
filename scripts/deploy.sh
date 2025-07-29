@@ -432,40 +432,70 @@ choose_deployment_strategy() {
     echo "   - Manual conflict resolution"
     echo
     
+    # Interactive choice with validation
     local choice
-    if [[ "$has_conflicts" == "true" ]]; then
-        choice=$(prompt_input "Select deployment option (1-5)" "1")
-    else
-        choice=$(prompt_input "Select deployment option (1-5)" "2")
-    fi
-    
-    case "$choice" in
-        1) 
-            DEPLOYMENT_TYPE="docker-isolated"
-            print_info "Selected: Docker Isolated Deployment"
-            ;;
-        2) 
-            DEPLOYMENT_TYPE="docker-standard"
-            print_info "Selected: Docker Standard Deployment"
-            ;;
-        3) 
-            DEPLOYMENT_TYPE="manual-integration"
-            print_info "Selected: Manual Integration Deployment"
-            ;;
-        4) 
-            DEPLOYMENT_TYPE="portable"
-            print_info "Selected: Portable Installation"
-            ;;
-        5) 
-            DEPLOYMENT_TYPE="custom"
-            print_info "Selected: Custom Configuration"
-            ;;
-        *) 
-            print_error "Invalid selection"
-            choose_deployment_strategy
-            return
-            ;;
-    esac
+    while true; do
+        if [[ "$AUTO_MODE" == true ]]; then
+            if [[ "$has_conflicts" == "true" ]]; then
+                choice="1"
+                echo -e "${CYAN}Select deployment option (1-5)${NC} ${YELLOW}[AUTO: 1]${NC}"
+            else
+                choice="2" 
+                echo -e "${CYAN}Select deployment option (1-5)${NC} ${YELLOW}[AUTO: 2]${NC}"
+            fi
+        else
+            if [[ "$has_conflicts" == "true" ]]; then
+                echo -ne "${CYAN}Select deployment option (1-5) ${YELLOW}(recommended: 1)${NC}: "
+            else
+                echo -ne "${CYAN}Select deployment option (1-5) ${YELLOW}(recommended: 2)${NC}: "
+            fi
+            read -r choice < /dev/tty
+            
+            # Use default if empty
+            if [[ -z "$choice" ]]; then
+                if [[ "$has_conflicts" == "true" ]]; then
+                    choice="1"
+                else
+                    choice="2"
+                fi
+            fi
+        fi
+        
+        case "$choice" in
+            1) 
+                DEPLOYMENT_TYPE="docker-isolated"
+                print_info "Selected: Docker Isolated Deployment"
+                break
+                ;;
+            2) 
+                DEPLOYMENT_TYPE="docker-standard"
+                print_info "Selected: Docker Standard Deployment"
+                break
+                ;;
+            3) 
+                DEPLOYMENT_TYPE="manual-integration"
+                print_info "Selected: Manual Integration Deployment"
+                break
+                ;;
+            4) 
+                DEPLOYMENT_TYPE="portable"
+                print_info "Selected: Portable Installation"
+                break
+                ;;
+            5) 
+                DEPLOYMENT_TYPE="custom"
+                print_info "Selected: Custom Configuration"
+                break
+                ;;
+            *) 
+                echo -e "${RED}Invalid selection. Please choose 1, 2, 3, 4, or 5.${NC}"
+                if [[ "$AUTO_MODE" == true ]]; then
+                    exit 1
+                fi
+                continue
+                ;;
+        esac
+    done
 }
 
 collect_configuration() {
