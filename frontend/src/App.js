@@ -383,6 +383,7 @@ function App() {
           allPolls={allPolls}
           createdPolls={createdPolls}
           participants={participants}
+          pollTimers={pollTimers}
           voteResults={voteResults}
           onCreatePoll={createPoll}
           onStartPoll={startPoll}
