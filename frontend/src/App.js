@@ -36,16 +36,33 @@ function App() {
             }
             break;
           case 'poll_started':
-            setActivePolls(prev => [...prev, {
+            const newPoll = {
               poll_id: data.poll_id,
               question: data.question,
-              options: data.options
-            }]);
+              options: data.options,
+              timer_minutes: data.timer_minutes
+            };
+            setActivePolls(prev => [...prev, newPoll]);
             setHasVoted(prev => ({...prev, [data.poll_id]: false}));
             setVoteResults(prev => ({...prev, [data.poll_id]: {}}));
+            
+            // Start timer if specified
+            if (data.timer_minutes) {
+              const endTime = Date.now() + (data.timer_minutes * 60 * 1000);
+              setPollTimers(prev => ({...prev, [data.poll_id]: endTime}));
+            }
             break;
           case 'poll_stopped':
             setActivePolls(prev => prev.filter(poll => poll.poll_id !== data.poll_id));
+            // Keep timer for display until cleanup
+            break;
+          case 'poll_auto_stopped':
+            setActivePolls(prev => prev.filter(poll => poll.poll_id !== data.poll_id));
+            setPollTimers(prev => {
+              const newTimers = {...prev};
+              delete newTimers[data.poll_id];
+              return newTimers;
+            });
             break;
           case 'participant_approved':
             if (data.participant_token === participantToken) {
