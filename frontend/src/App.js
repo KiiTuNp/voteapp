@@ -447,7 +447,7 @@ function OrganizerDashboard({
           </div>
           <div className="bg-purple-50 rounded-lg p-4">
             <h3 className="font-semibold text-purple-800 mb-2">Active Poll</h3>
-            <p className="text-2xl font-bold text-purple-600">{activePool ? 'Yes' : 'No'}</p>
+            <p className="text-2xl font-bold text-purple-600">{activePoll ? 'Yes' : 'No'}</p>
           </div>
         </div>
 
