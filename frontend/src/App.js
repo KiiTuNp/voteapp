@@ -46,8 +46,17 @@ function App() {
             setActivePoll(null);
             setHasVoted(false);
             break;
-          case 'vote_update':
-            setVoteResults(data.vote_counts);
+          case 'participant_approved':
+            if (data.participant_token === participantToken) {
+              setApprovalStatus('approved');
+            }
+            loadParticipants(roomData.room_id);
+            break;
+          case 'participant_denied':
+            if (data.participant_token === participantToken) {
+              setApprovalStatus('denied');
+            }
+            loadParticipants(roomData.room_id);
             break;
           default:
             break;
