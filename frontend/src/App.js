@@ -90,6 +90,9 @@ function App() {
       setRoomData(data);
       setParticipantToken(data.participant_token);
       setCurrentView('participant');
+      
+      // Load room status to check for existing active polls
+      loadRoomStatus(roomId);
     } catch (error) {
       alert('Error joining room: ' + error.message);
     }
