@@ -285,8 +285,10 @@ function App() {
     }
   };
 
-  // Vote
-  const vote = async (pollId, selectedOption) => {
+  // Vote with enhanced error handling and retry
+  const vote = async (pollId, selectedOption, retryCount = 0) => {
+    const maxRetries = 2;
+    
     try {
       const response = await fetch(`${BACKEND_URL}/api/polls/${pollId}/vote`, {
         method: 'POST',
@@ -296,16 +298,68 @@ function App() {
         body: JSON.stringify({
           participant_token: participantToken,
           selected_option: selectedOption
-        })
+        }),
+        timeout: 10000 // 10 second timeout
       });
       
       if (!response.ok) {
-        throw new Error('Failed to vote');
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Handle specific error cases
+        if (response.status === 400 && errorData.detail === 'Already voted') {
+          setHasVoted(prev => ({...prev, [pollId]: true}));
+          alert('⚠️ You have already voted on this poll.');
+          return;
+        }
+        
+        if (response.status === 403 && errorData.detail === 'Participant not approved to vote') {
+          alert('⚠️ You need to be approved by the organizer before you can vote.');
+          return;
+        }
+        
+        if (response.status === 404) {
+          alert('⚠️ This poll is no longer active.');
+          return;
+        }
+        
+        throw new Error(errorData.detail || `Server error: ${response.status}`);
       }
       
+      // Success - mark as voted
       setHasVoted(prev => ({...prev, [pollId]: true}));
+      
+      // Show success feedback
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      notification.textContent = '✓ Vote recorded successfully!';
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 3000);
+      
     } catch (error) {
-      alert('Error voting: ' + error.message);
+      console.error('Vote error:', error);
+      
+      // Retry logic for network errors
+      if (retryCount < maxRetries && (
+        error.name === 'TypeError' || 
+        error.message.includes('fetch') ||
+        error.message.includes('Network')
+      )) {
+        console.log(`Retrying vote... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => {
+          vote(pollId, selectedOption, retryCount + 1);
+        }, 1000 * (retryCount + 1)); // Exponential backoff
+        return;
+      }
+      
+      // Show user-friendly error message
+      alert(
+        `❌ Failed to record your vote:\n\n${error.message}\n\n` +
+        `Please try again. If the problem persists, contact the organizer.`
+      );
     }
   };
 
