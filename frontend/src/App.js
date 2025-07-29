@@ -341,6 +341,7 @@ function App() {
           roomData={roomData}
           activePoll={activePoll}
           hasVoted={hasVoted}
+          approvalStatus={approvalStatus}
           voteResults={voteResults}
           onVote={vote}
           onBack={() => setCurrentView('home')}
