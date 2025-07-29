@@ -297,29 +297,6 @@ function App() {
     }
   };
 
-  const generateReportText = (reportData) => {
-    let text = `POLL MEETING REPORT\n`;
-    text += `========================\n`;
-    text += `Room ID: ${reportData.room_id}\n`;
-    text += `Organizer: ${reportData.organizer_name}\n`;
-    text += `Participants: ${reportData.participant_count}\n`;
-    text += `Generated: ${new Date(reportData.generated_at).toLocaleString()}\n\n`;
-    
-    reportData.polls.forEach((poll, index) => {
-      text += `POLL ${index + 1}: ${poll.question}\n`;
-      text += `Total Votes: ${poll.total_votes}\n`;
-      text += `Results:\n`;
-      poll.options.forEach(option => {
-        const count = poll.results[option] || 0;
-        const percentage = poll.total_votes > 0 ? ((count / poll.total_votes) * 100).toFixed(1) : 0;
-        text += `  ${option}: ${count} votes (${percentage}%)\n`;
-      });
-      text += `\n`;
-    });
-    
-    return text;
-  };
-
   // Home View
   if (currentView === 'home') {
     return (
