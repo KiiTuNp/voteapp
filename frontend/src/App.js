@@ -525,6 +525,7 @@ function OrganizerDashboard({
   const [showPollForm, setShowPollForm] = useState(false);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
+  const [timerMinutes, setTimerMinutes] = useState('');
 
   // Load participants when component mounts
   useEffect(() => {
