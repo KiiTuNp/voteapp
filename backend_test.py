@@ -778,19 +778,248 @@ class SecretPollAPITester:
         )
         return success
 
-    def test_generate_report(self):
-        """Test generating a report"""
+    def test_critical_pdf_generation(self):
+        """
+        🚨 CRITICAL TEST: PDF Generation and Download
+        This is one of the main issues to debug
+        """
         if not self.room_id:
-            print("❌ No room ID available for report test")
+            print("❌ No room ID available for PDF generation test")
+            return False
+
+        print("\n🚨 CRITICAL TEST: PDF Generation and Download")
+        print("=" * 60)
+        
+        try:
+            url = f"{self.base_url}/api/rooms/{self.room_id}/report"
+            print(f"   Testing PDF endpoint: {url}")
+            
+            response = requests.get(url, timeout=30)
+            
+            print(f"   PDF Response Status: {response.status_code}")
+            print(f"   Content-Type: {response.headers.get('Content-Type', 'Not set')}")
+            print(f"   Content-Disposition: {response.headers.get('Content-Disposition', 'Not set')}")
+            print(f"   Content-Length: {response.headers.get('Content-Length', 'Not set')}")
+            
+            self.tests_run += 1
+            
+            if response.status_code == 200:
+                content_type = response.headers.get('Content-Type', '')
+                if 'application/pdf' in content_type:
+                    print("   ✅ PDF generated successfully")
+                    print(f"   PDF size: {len(response.content)} bytes")
+                    
+                    # Check if content-disposition header has filename
+                    content_disposition = response.headers.get('Content-Disposition', '')
+                    if 'filename=' in content_disposition:
+                        print(f"   ✅ Filename header present: {content_disposition}")
+                    else:
+                        print("   ⚠️  No filename in Content-Disposition header")
+                    
+                    # Verify it's actually PDF content
+                    if response.content.startswith(b'%PDF'):
+                        print("   ✅ Valid PDF content detected")
+                        self.tests_passed += 1
+                        return True
+                    else:
+                        print("   ❌ Invalid PDF content - does not start with %PDF")
+                else:
+                    print(f"   ❌ Wrong content type: {content_type}")
+            else:
+                print(f"   ❌ PDF generation failed with status {response.status_code}")
+                try:
+                    error_detail = response.json()
+                    print(f"   Error details: {error_detail}")
+                except:
+                    print(f"   Response: {response.text[:200]}")
+            
             return False
             
+        except Exception as e:
+            print(f"   ❌ PDF generation exception: {str(e)}")
+            self.tests_run += 1
+            return False
+
+    def test_critical_participant_approval_during_active_polls(self):
+        """
+        🚨 CRITICAL TEST: Participant Approval During Active Polls
+        This is the main issue to debug - participants should be able to join and be approved while polls are active
+        """
+        if not self.room_id:
+            print("❌ No room ID available for participant approval test")
+            return False
+
+        print("\n🚨 CRITICAL TEST: Participant Approval During Active Polls")
+        print("=" * 60)
+        
+        # Step 1: Create multiple polls
+        print("   Step 1: Creating multiple polls...")
+        polls_data = [
+            {
+                "room_id": self.room_id,
+                "question": "What is your favorite programming language?",
+                "options": ["Python", "JavaScript", "Java", "Go"]
+            },
+            {
+                "room_id": self.room_id,
+                "question": "Which framework do you prefer?",
+                "options": ["React", "Vue", "Angular"]
+            }
+        ]
+
+        for i, poll_data in enumerate(polls_data):
+            success, response = self.run_test(
+                f"Create Poll {i+1} for Active Test",
+                "POST",
+                "api/polls/create",
+                200,
+                data=poll_data
+            )
+            
+            if success and 'poll_id' in response:
+                self.poll_ids.append(response['poll_id'])
+                print(f"   Created poll: {response['question']}")
+            else:
+                print(f"   ❌ Failed to create poll {i+1}")
+                return False
+
+        # Step 2: Start the polls to make them active
+        print("   Step 2: Starting polls to make them active...")
+        for i, poll_id in enumerate(self.poll_ids):
+            success, response = self.run_test(
+                f"Start Poll {i+1}",
+                "POST",
+                f"api/polls/{poll_id}/start",
+                200
+            )
+            
+            if not success:
+                print(f"   ❌ Failed to start poll {i+1}")
+                return False
+            
+            print(f"   ✅ Started poll {i+1}")
+
+        # Step 3: Verify polls are active
         success, response = self.run_test(
-            "Generate Report",
+            "Verify Polls Are Active",
             "GET",
-            f"api/rooms/{self.room_id}/report",
+            f"api/rooms/{self.room_id}/status",
             200
         )
-        return success
+        
+        if success:
+            active_poll_count = response.get('active_poll_count', 0)
+            print(f"   ✅ Confirmed {active_poll_count} active polls")
+            if active_poll_count == 0:
+                print("   ❌ No active polls found - cannot test approval during active polls")
+                return False
+        else:
+            print("   ❌ Failed to verify active polls")
+            return False
+
+        # Step 4: Add multiple participants while polls are active
+        print("   Step 3: Adding participants while polls are ACTIVE...")
+        participants = [
+            f"ActivePollParticipant1_{datetime.now().strftime('%H%M%S')}",
+            f"ActivePollParticipant2_{datetime.now().strftime('%H%M%S')}",
+            f"ActivePollParticipant3_{datetime.now().strftime('%H%M%S')}"
+        ]
+
+        for participant_name in participants:
+            success, response = self.run_test(
+                f"Join Room During Active Polls - {participant_name}",
+                "POST",
+                "api/rooms/join",
+                200,
+                params={"room_id": self.room_id, "participant_name": participant_name}
+            )
+            
+            if success and 'participant_token' in response:
+                self.participant_tokens.append(response['participant_token'])
+                self.participant_names.append(participant_name)
+                print(f"   ✅ {participant_name} joined with token: {response['participant_token'][:8]}...")
+                print(f"   Status: {response.get('approval_status', 'unknown')}")
+            else:
+                print(f"   ❌ Failed to join {participant_name}")
+                return False
+
+        # Step 5: Get participant IDs for approval
+        print("   Step 4: Getting participant IDs for approval...")
+        success, response = self.run_test(
+            "Get Participants for Approval",
+            "GET",
+            f"api/rooms/{self.room_id}/participants",
+            200
+        )
+        
+        if success and 'participants' in response:
+            all_participants = response['participants']
+            for participant in all_participants:
+                if participant['participant_name'] in self.participant_names:
+                    self.participant_ids.append(participant['participant_id'])
+                    print(f"   Found participant ID: {participant['participant_id']} for {participant['participant_name']}")
+        else:
+            print("   ❌ Failed to get participants list")
+            return False
+
+        # Step 6: CRITICAL - Try to approve participants while polls are ACTIVE
+        print("   Step 5: 🚨 APPROVING PARTICIPANTS WHILE POLLS ARE ACTIVE...")
+        approval_results = []
+        for i, participant_id in enumerate(self.participant_ids):
+            success, response = self.run_test(
+                f"🚨 Approve Participant {i+1} During Active Polls",
+                "POST",
+                f"api/participants/{participant_id}/approve",
+                200
+            )
+            approval_results.append(success)
+            
+            if success:
+                print(f"   ✅ Successfully approved participant {i+1} during active polls")
+            else:
+                print(f"   ❌ Failed to approve participant {i+1} during active polls")
+
+        # Step 7: Verify approved participants can vote on active polls
+        print("   Step 6: Testing if approved participants can vote on active polls...")
+        if len(self.participant_tokens) > 0 and len(self.poll_ids) > 0:
+            vote_data = {
+                "participant_token": self.participant_tokens[0],
+                "selected_option": "Python"  # First option from first poll
+            }
+            
+            success, response = self.run_test(
+                "🚨 Vote on Active Poll After Approval",
+                "POST",
+                f"api/polls/{self.poll_ids[0]}/vote",
+                200,
+                data=vote_data
+            )
+            
+            if success:
+                print("   ✅ Approved participant successfully voted on active poll")
+            else:
+                print("   ❌ Approved participant failed to vote on active poll")
+                approval_results.append(False)
+
+        # Step 8: Check final room status
+        success, response = self.run_test(
+            "Final Room Status After Approvals",
+            "GET",
+            f"api/rooms/{self.room_id}/status",
+            200
+        )
+        
+        if success:
+            print(f"   Final status: {response.get('approved_count', 0)} approved, {response.get('pending_count', 0)} pending, {response.get('active_poll_count', 0)} active polls")
+
+        # Return overall result
+        overall_success = all(approval_results)
+        if overall_success:
+            print("   🎉 CRITICAL TEST PASSED: Participants can be approved during active polls!")
+        else:
+            print("   ❌ CRITICAL TEST FAILED: Issues with participant approval during active polls")
+        
+        return overall_success
 
     def test_cleanup_room(self):
         """Test cleaning up room data"""
