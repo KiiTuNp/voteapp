@@ -327,7 +327,7 @@ class SecretPollAPITester:
         self.test_get_room_status()
 
         # Test 6: Create poll
-        if not self.test_create_poll():
+        if not self.test_create_poll_with_custom_request():
             print("❌ Poll creation failed, stopping tests")
             return False
 
