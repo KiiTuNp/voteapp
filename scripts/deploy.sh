@@ -7,7 +7,10 @@
 # application that works in ANY server context without breaking existing 
 # infrastructure. It detects conflicts and offers multiple solutions.
 #
-# Usage: ./deploy.sh
+# Usage: ./deploy.sh [--auto]
+# 
+# Options:
+#   --auto    Run with default settings (non-interactive)
 # 
 # Features:
 # - Comprehensive system compatibility checks
@@ -21,6 +24,13 @@
 # =============================================================================
 
 set -e  # Exit on any error
+
+# Check for auto mode
+AUTO_MODE=false
+if [[ "$1" == "--auto" ]]; then
+    AUTO_MODE=true
+    shift
+fi
 
 # Colors for output
 RED='\033[0;31m'
