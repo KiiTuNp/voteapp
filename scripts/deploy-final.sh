@@ -437,7 +437,7 @@ install_manual_deployment() {
 create_docker_compose() {
     print_info "Création du fichier docker-compose.yml..."
     
-    cat > docker-compose.yml << 'EOF'
+    cat > docker-compose.yml << EOF
 version: '3.8'
 
 services:
@@ -445,41 +445,123 @@ services:
     image: mongo:7.0
     container_name: secret-poll-mongo
     restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=poll_app
     volumes:
       - mongodb_data:/data/db
     networks:
       - poll-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
     container_name: secret-poll-backend
     restart: unless-stopped
     environment:
       - MONGO_URL=mongodb://mongodb:27017/poll_app
+      - PORT=8001
+      - ENVIRONMENT=production
+      - CORS_ORIGINS=http://$DOMAIN,http://$DOMAIN:3000
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - poll-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_BACKEND_URL=http://$DOMAIN:8001
     container_name: secret-poll-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "3000:80"
+      - "8001:8001"
     depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - poll-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: secret-poll-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
       - backend
     networks:
       - poll-network
 
 volumes:
   mongodb_data:
+    driver: local
 
 networks:
   poll-network:
     driver: bridge
+EOF
+
+    # Créer la configuration Nginx pour le proxy
+    cat > nginx-proxy.conf << EOF
+upstream backend {
+    server backend:8001;
+}
+
+upstream frontend {
+    server frontend:80;
+}
+
+server {
+    listen 80;
+    server_name $DOMAIN localhost;
+    
+    # Security headers
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    
+    # API routes vers le backend
+    location /api/ {
+        proxy_pass http://backend;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
+    
+    # Frontend routes
+    location / {
+        proxy_pass http://frontend;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
 EOF
 }
 
