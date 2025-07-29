@@ -132,11 +132,23 @@ async def health_check():
 async def create_room(organizer_name: str, custom_room_id: str = None):
     # Generate room ID
     if custom_room_id and custom_room_id.strip():
+        # Validate custom room ID
+        clean_id = custom_room_id.strip().upper()
+        
+        # Check length (3-10 characters)
+        if len(clean_id) < 3 or len(clean_id) > 10:
+            raise HTTPException(status_code=400, detail="Custom room ID must be 3-10 characters long")
+        
+        # Check alphanumeric only
+        if not clean_id.isalnum():
+            raise HTTPException(status_code=400, detail="Custom room ID must contain only letters and numbers")
+        
         # Check if custom room ID already exists
-        existing_room = rooms_collection.find_one({"room_id": custom_room_id.strip().upper()})
+        existing_room = rooms_collection.find_one({"room_id": clean_id})
         if existing_room:
             raise HTTPException(status_code=400, detail="Room ID already exists. Please choose a different ID.")
-        room_id = custom_room_id.strip().upper()
+        
+        room_id = clean_id
     else:
         # Generate random room ID if no custom ID provided
         room_id = str(uuid.uuid4())[:8].upper()
