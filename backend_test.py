@@ -465,8 +465,8 @@ class SecretPollAPITester:
 
     def run_all_tests(self):
         """Run all API tests in sequence"""
-        print("🚀 Starting Secret Poll API Tests")
-        print("=" * 50)
+        print("🚀 Starting Secret Poll API Tests (WITH APPROVAL SYSTEM)")
+        print("=" * 60)
         
         # Test 1: Health check
         if not self.test_health_check():
@@ -478,42 +478,58 @@ class SecretPollAPITester:
             print("❌ Room creation failed, stopping tests")
             return False
 
-        # Test 3: Join room
-        if not self.test_join_room():
-            print("❌ Room joining failed, stopping tests")
+        # Test 3: Join room with participant name (NEW)
+        if not self.test_join_room_with_name():
+            print("❌ Room joining with name failed, stopping tests")
             return False
 
         # Test 4: Try joining invalid room
         self.test_join_invalid_room()
 
-        # Test 5: Get room status
-        self.test_get_room_status()
+        # Test 5: Get participants list (NEW)
+        if not self.test_get_participants_list():
+            print("❌ Getting participants list failed, stopping tests")
+            return False
 
-        # Test 6: Create poll (using new JSON format)
+        # Test 6: Get room status with approval counts (NEW)
+        self.test_room_status_with_approval_counts()
+
+        # Test 7: Create poll (using new JSON format)
         if not self.test_create_poll():
             print("❌ Poll creation failed, stopping tests")
             return False
 
-        # Test 7: Start poll
+        # Test 8: Start poll
         if not self.test_start_poll():
             print("❌ Poll start failed, stopping tests")
             return False
 
-        # Test 8: Vote on poll
+        # Test 9: Try voting with unapproved participant (should fail) (NEW)
+        self.test_vote_unapproved_participant()
+
+        # Test 10: Approve participant (NEW)
+        if not self.test_approve_participant():
+            print("❌ Participant approval failed, stopping tests")
+            return False
+
+        # Test 11: Vote on poll (now should work after approval)
         if not self.test_vote_on_poll():
             print("❌ Voting failed, stopping tests")
             return False
 
-        # Test 9: Try duplicate vote (should fail)
+        # Test 12: Try duplicate vote (should fail)
         self.test_duplicate_vote()
 
-        # Test 10: Stop poll
+        # Test 13: Test deny participant (NEW)
+        self.test_deny_participant()
+
+        # Test 14: Stop poll
         self.test_stop_poll()
 
-        # Test 11: Generate report
+        # Test 15: Generate report
         self.test_generate_report()
 
-        # Test 12: Cleanup room data
+        # Test 16: Cleanup room data
         self.test_cleanup_room()
 
         return True
