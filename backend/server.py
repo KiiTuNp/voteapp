@@ -237,12 +237,25 @@ async def start_poll(poll_id: str):
         {"$set": {"is_active": True}}
     )
     
+    # Start timer if specified
+    if poll.get("timer_minutes"):
+        # Cancel existing timer if any
+        if poll_id in active_timers:
+            active_timers[poll_id].cancel()
+        
+        # Start new timer
+        timer_task = asyncio.create_task(
+            auto_stop_poll(poll_id, poll["room_id"], poll["timer_minutes"])
+        )
+        active_timers[poll_id] = timer_task
+    
     # Broadcast poll start
     await manager.broadcast_to_room(poll["room_id"], {
         "type": "poll_started",
         "poll_id": poll_id,
         "question": poll["question"],
-        "options": poll["options"]
+        "options": poll["options"],
+        "timer_minutes": poll.get("timer_minutes")
     })
     
     return {"message": "Poll started"}
@@ -257,6 +270,11 @@ async def stop_poll(poll_id: str):
         {"poll_id": poll_id},
         {"$set": {"is_active": False}}
     )
+    
+    # Cancel timer if active
+    if poll_id in active_timers:
+        active_timers[poll_id].cancel()
+        del active_timers[poll_id]
     
     # Broadcast poll stop
     await manager.broadcast_to_room(poll["room_id"], {
