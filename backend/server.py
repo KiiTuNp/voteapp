@@ -427,36 +427,6 @@ async def get_all_polls(room_id: str):
     
     return {"polls": clean_polls}
 
-@app.get("/api/organizer/{organizer_name}/rooms")
-async def get_organizer_rooms(organizer_name: str):
-    """Get all rooms for a specific organizer"""
-    rooms = list(rooms_collection.find({"organizer_name": organizer_name, "is_active": True}))
-    
-    room_summaries = []
-    for room in rooms:
-        room_id = room["room_id"]
-        
-        # Get participant counts
-        participant_count = participants_collection.count_documents({"room_id": room_id})
-        approved_count = participants_collection.count_documents({"room_id": room_id, "approval_status": "approved"})
-        pending_count = participants_collection.count_documents({"room_id": room_id, "approval_status": "pending"})
-        
-        # Get poll counts
-        total_polls = polls_collection.count_documents({"room_id": room_id})
-        active_polls = polls_collection.count_documents({"room_id": room_id, "is_active": True})
-        
-        room_summaries.append({
-            "room_id": room_id,
-            "created_at": room["created_at"].isoformat(),
-            "participant_count": participant_count,
-            "approved_count": approved_count,
-            "pending_count": pending_count,
-            "total_polls": total_polls,
-            "active_polls": active_polls
-        })
-    
-    return {"organizer_name": organizer_name, "rooms": room_summaries}
-
 @app.get("/api/rooms/{room_id}/participants")
 async def get_participants(room_id: str):
     room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
