@@ -12,6 +12,7 @@ function App() {
   const [voteResults, setVoteResults] = useState({});
   const [hasVoted, setHasVoted] = useState(false);
   const [roomStatus, setRoomStatus] = useState(null);
+  const [createdPolls, setCreatedPolls] = useState([]);
 
   // WebSocket connection
   useEffect(() => {
