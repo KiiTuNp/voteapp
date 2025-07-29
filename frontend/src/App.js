@@ -8,9 +8,10 @@ function App() {
   const [roomData, setRoomData] = useState(null);
   const [participantToken, setParticipantToken] = useState(null);
   const [ws, setWs] = useState(null);
-  const [activePoll, setActivePoll] = useState(null);
+  const [activePolls, setActivePolls] = useState([]); // Changed from single activePoll to multiple activePolls
+  const [allPolls, setAllPolls] = useState([]); // Track all polls with their statuses
+  const [hasVoted, setHasVoted] = useState({});  // Changed to object to track votes per poll
   const [voteResults, setVoteResults] = useState({});
-  const [hasVoted, setHasVoted] = useState(false);
   const [roomStatus, setRoomStatus] = useState(null);
   const [createdPolls, setCreatedPolls] = useState([]);
   const [participants, setParticipants] = useState([]);
