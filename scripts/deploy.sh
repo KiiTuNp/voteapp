@@ -146,6 +146,17 @@ prompt_input() {
     local secret="$3"
     local value
     
+    # Auto mode: use default
+    if [[ "$AUTO_MODE" == true ]]; then
+        if [[ "$secret" == "true" ]]; then
+            echo -e "${CYAN}$prompt${NC} ${YELLOW}[AUTO: hidden]${NC}"
+        else
+            echo -e "${CYAN}$prompt${NC} ${YELLOW}[AUTO: $default]${NC}"
+        fi
+        echo "$default"
+        return
+    fi
+    
     if [[ "$secret" == "true" ]]; then
         echo -e "${CYAN}$prompt${NC}"
         if [[ -n "$default" ]]; then
