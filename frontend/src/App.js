@@ -464,16 +464,27 @@ function OrganizerDashboard({
   roomStatus, 
   activePoll, 
   createdPolls,
+  participants,
   voteResults, 
   onCreatePoll, 
   onStartPoll, 
   onStopPoll, 
-  onGenerateReport, 
+  onGenerateReport,
+  onApproveParticipant,
+  onDenyParticipant,
+  onLoadParticipants,
   onBack 
 }) {
   const [showPollForm, setShowPollForm] = useState(false);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
+
+  // Load participants when component mounts
+  useEffect(() => {
+    if (roomData && roomData.room_id) {
+      onLoadParticipants(roomData.room_id);
+    }
+  }, [roomData, onLoadParticipants]);
 
   const handleCreatePoll = (e) => {
     e.preventDefault();
@@ -502,6 +513,9 @@ function OrganizerDashboard({
     }
   };
 
+  const pendingParticipants = participants.filter(p => p.approval_status === 'pending');
+  const approvedParticipants = participants.filter(p => p.approval_status === 'approved');
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
@@ -518,14 +532,18 @@ function OrganizerDashboard({
           </button>
         </div>
         
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
           <div className="bg-blue-50 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-800 mb-2">Participants</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">Total Participants</h3>
             <p className="text-2xl font-bold text-blue-600">{roomStatus?.participant_count || 0}</p>
           </div>
           <div className="bg-green-50 rounded-lg p-4">
-            <h3 className="font-semibold text-green-800 mb-2">Total Polls</h3>
-            <p className="text-2xl font-bold text-green-600">{roomStatus?.total_polls || 0}</p>
+            <h3 className="font-semibold text-green-800 mb-2">Approved</h3>
+            <p className="text-2xl font-bold text-green-600">{roomStatus?.approved_count || 0}</p>
+          </div>
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <h3 className="font-semibold text-yellow-800 mb-2">Pending</h3>
+            <p className="text-2xl font-bold text-yellow-600">{roomStatus?.pending_count || 0}</p>
           </div>
           <div className="bg-purple-50 rounded-lg p-4">
             <h3 className="font-semibold text-purple-800 mb-2">Active Poll</h3>
@@ -548,6 +566,51 @@ function OrganizerDashboard({
           </button>
         </div>
       </div>
+
+      {/* Participant Management Section */}
+      {pendingParticipants.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Pending Participants</h2>
+          <div className="space-y-3">
+            {pendingParticipants.map((participant) => (
+              <div key={participant.participant_id} className="flex justify-between items-center p-4 bg-yellow-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-800">{participant.participant_name}</h4>
+                  <p className="text-sm text-gray-600">Joined: {new Date(participant.joined_at).toLocaleTimeString()}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onApproveParticipant(participant.participant_id)}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => onDenyParticipant(participant.participant_id)}
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                  >
+                    Deny
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Approved Participants Section */}
+      {approvedParticipants.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Approved Participants</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {approvedParticipants.map((participant) => (
+              <div key={participant.participant_id} className="p-3 bg-green-50 rounded-lg">
+                <span className="font-medium text-green-800">{participant.participant_name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showPollForm && (
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
