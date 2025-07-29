@@ -325,8 +325,8 @@ function App() {
         return;
       }
       
-      // Show loading state
-      const originalButton = document.querySelector('button:contains("📄 Generate PDF Report")');
+      // Show loading state  
+      console.log('Starting PDF generation...');
       
       // Generate and download PDF report
       const response = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/report`);
