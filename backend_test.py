@@ -1039,8 +1039,8 @@ class SecretPollAPITester:
         return False
 
     def run_all_tests(self):
-        """Run all API tests in sequence including new multiple polls features"""
-        print("🚀 Starting Secret Poll API Tests (MULTIPLE ACTIVE POLLS & RESTART SYSTEM)")
+        """Run all API tests including new professional meeting management features"""
+        print("🚀 Starting Secret Poll API Tests (PROFESSIONAL MEETING MANAGEMENT)")
         print("=" * 80)
         
         # Basic functionality tests
@@ -1048,8 +1048,20 @@ class SecretPollAPITester:
             print("❌ Health check failed, stopping tests")
             return False
 
+        # Test custom room ID functionality
+        print("\n" + "="*50)
+        print("🏢 TESTING CUSTOM ROOM ID FEATURES")
+        print("="*50)
+        
+        if not self.test_create_room_with_custom_id():
+            print("❌ Custom room ID creation failed, stopping tests")
+            return False
+            
+        self.test_duplicate_custom_room_id()
+
+        # Test regular room creation for other tests
         if not self.test_create_room():
-            print("❌ Room creation failed, stopping tests")
+            print("❌ Regular room creation failed, stopping tests")
             return False
 
         if not self.test_join_room_with_name():
@@ -1068,28 +1080,56 @@ class SecretPollAPITester:
             print("❌ Participant approval failed, stopping tests")
             return False
 
-        # NEW MULTIPLE POLLS TESTS
+        # Test poll timer functionality
         print("\n" + "="*50)
-        print("🔥 TESTING NEW MULTIPLE ACTIVE POLLS FEATURES")
+        print("⏰ TESTING POLL TIMER FEATURES")
         print("="*50)
         
-        if not self.test_multiple_active_polls():
-            print("❌ Multiple active polls test failed, stopping tests")
+        if not self.test_create_poll_with_timer():
+            print("❌ Poll timer creation failed, stopping tests")
             return False
 
-        if not self.test_poll_restart_functionality():
-            print("❌ Poll restart functionality test failed, stopping tests")
+        # Test regular poll creation
+        if not self.test_create_poll():
+            print("❌ Regular poll creation failed, stopping tests")
             return False
 
-        if not self.test_vote_persistence_through_restart():
-            print("❌ Vote persistence through restart test failed, stopping tests")
+        if not self.test_start_poll():
+            print("❌ Poll start failed, stopping tests")
             return False
 
-        if not self.test_enhanced_organizer_dashboard():
-            print("❌ Enhanced organizer dashboard test failed, stopping tests")
+        # Test no restart policy
+        print("\n" + "="*50)
+        print("🚫 TESTING NO POLL RESTART POLICY")
+        print("="*50)
+        
+        if not self.test_poll_no_restart_after_votes():
+            print("❌ No restart policy test failed, stopping tests")
+            return False
+
+        # Test real-time results
+        print("\n" + "="*50)
+        print("📊 TESTING REAL-TIME RESULTS")
+        print("="*50)
+        
+        if not self.test_real_time_vote_updates():
+            print("❌ Real-time vote updates test failed, stopping tests")
+            return False
+
+        # Test multi-room management
+        print("\n" + "="*50)
+        print("🏢 TESTING MULTI-ROOM MANAGEMENT")
+        print("="*50)
+        
+        if not self.test_organizer_multi_room_management():
+            print("❌ Multi-room management test failed, stopping tests")
             return False
 
         # Additional tests
+        print("\n" + "="*50)
+        print("🔧 ADDITIONAL FUNCTIONALITY TESTS")
+        print("="*50)
+        
         self.test_vote_unapproved_participant()
         self.test_duplicate_vote()
         self.test_deny_participant()
