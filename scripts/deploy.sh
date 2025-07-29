@@ -7,7 +7,10 @@
 # application that works in ANY server context without breaking existing 
 # infrastructure. It detects conflicts and offers multiple solutions.
 #
-# Usage: ./deploy.sh
+# Usage: ./deploy.sh [--auto]
+# 
+# Options:
+#   --auto    Run with default settings (non-interactive)
 # 
 # Features:
 # - Comprehensive system compatibility checks
@@ -21,6 +24,13 @@
 # =============================================================================
 
 set -e  # Exit on any error
+
+# Check for auto mode
+AUTO_MODE=false
+if [[ "$1" == "--auto" ]]; then
+    AUTO_MODE=true
+    shift
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -104,6 +114,16 @@ confirm_action() {
     local default="${2:-n}"
     local response
     
+    # Auto mode: use default
+    if [[ "$AUTO_MODE" == true ]]; then
+        echo -e "${YELLOW}$message [AUTO: $default]${NC}"
+        if [[ "$default" == "y" ]]; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+    
     if [[ "$default" == "y" ]]; then
         echo -e "${YELLOW}$message [Y/n]:${NC} "
     else
@@ -125,6 +145,17 @@ prompt_input() {
     local default="$2"
     local secret="$3"
     local value
+    
+    # Auto mode: use default
+    if [[ "$AUTO_MODE" == true ]]; then
+        if [[ "$secret" == "true" ]]; then
+            echo -e "${CYAN}$prompt${NC} ${YELLOW}[AUTO: hidden]${NC}"
+        else
+            echo -e "${CYAN}$prompt${NC} ${YELLOW}[AUTO: $default]${NC}"
+        fi
+        echo "$default"
+        return
+    fi
     
     if [[ "$secret" == "true" ]]; then
         echo -e "${CYAN}$prompt${NC}"
