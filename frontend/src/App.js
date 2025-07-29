@@ -975,4 +975,44 @@ function ParticipantView({ roomData, activePolls, hasVoted, approvalStatus, vote
   );
 }
 
+// Timer Component
+function PollTimer({ endTime, onTimerEnd }) {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = endTime - now;
+      
+      if (diff <= 0) {
+        setTimeLeft('TIME UP');
+        if (onTimerEnd) onTimerEnd();
+        return;
+      }
+      
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [endTime, onTimerEnd]);
+
+  if (!timeLeft) return null;
+
+  return (
+    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+      timeLeft === 'TIME UP' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+    }`}>
+      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      {timeLeft}
+    </div>
+  );
+}
+
 export default App;
