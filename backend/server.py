@@ -64,6 +64,33 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# Store active poll timers
+active_timers = {}
+
+async def auto_stop_poll(poll_id: str, room_id: str, delay_minutes: int):
+    """Auto-stop a poll after specified minutes"""
+    await asyncio.sleep(delay_minutes * 60)  # Convert minutes to seconds
+    
+    # Check if poll is still active
+    poll = polls_collection.find_one({"poll_id": poll_id, "is_active": True})
+    if poll:
+        # Stop the poll
+        polls_collection.update_one(
+            {"poll_id": poll_id},
+            {"$set": {"is_active": False}}
+        )
+        
+        # Broadcast poll auto-stop
+        await manager.broadcast_to_room(room_id, {
+            "type": "poll_auto_stopped",
+            "poll_id": poll_id,
+            "message": "Poll automatically stopped due to timer"
+        })
+        
+        # Remove from active timers
+        if poll_id in active_timers:
+            del active_timers[poll_id]
+
 # Pydantic models
 class Room(BaseModel):
     room_id: str
