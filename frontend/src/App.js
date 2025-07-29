@@ -862,7 +862,7 @@ function OrganizerDashboard({
 }
 
 // Participant View Component
-function ParticipantView({ roomData, activePolls, hasVoted, approvalStatus, voteResults, onVote, onBack }) {
+function ParticipantView({ roomData, activePolls, allPolls, hasVoted, approvalStatus, voteResults, pollTimers, onVote, onBack }) {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
