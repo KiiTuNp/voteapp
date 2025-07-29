@@ -755,7 +755,34 @@ function ParticipantView({ roomData, activePoll, hasVoted, approvalStatus, voteR
         </div>
       </div>
 
-      {!activePoll && (
+      {/* Approval Status Messages */}
+      {approvalStatus === 'pending' && (
+        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Waiting for Approval</h2>
+          <p className="text-gray-600">The organizer needs to approve you before you can participate in polls.</p>
+          <p className="text-sm text-gray-500 mt-2">Name: {roomData?.participant_name}</p>
+        </div>
+      )}
+
+      {approvalStatus === 'denied' && (
+        <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600">The organizer has denied your request to participate in this meeting.</p>
+        </div>
+      )}
+
+      {/* Only show polls if approved */}
+      {approvalStatus === 'approved' && !activePoll && (
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -767,7 +794,7 @@ function ParticipantView({ roomData, activePoll, hasVoted, approvalStatus, voteR
         </div>
       )}
 
-      {activePoll && !hasVoted && (
+      {approvalStatus === 'approved' && activePoll && !hasVoted && (
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Poll</h2>
           <h3 className="text-xl text-gray-700 mb-6">{activePoll.question}</h3>
