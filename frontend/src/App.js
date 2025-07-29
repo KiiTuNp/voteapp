@@ -402,11 +402,12 @@ function OrganizerCard({ onCreateRoom }) {
 // Participant Card Component
 function ParticipantCard({ onJoinRoom }) {
   const [roomId, setRoomId] = useState('');
+  const [participantName, setParticipantName] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (roomId.trim()) {
-      onJoinRoom(roomId.trim().toUpperCase());
+    if (roomId.trim() && participantName.trim()) {
+      onJoinRoom(roomId.trim().toUpperCase(), participantName.trim());
     }
   };
 
@@ -419,10 +420,21 @@ function ParticipantCard({ onJoinRoom }) {
           </svg>
         </div>
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Join a Meeting</h2>
-        <p className="text-gray-600">Enter the room ID to participate</p>
+        <p className="text-gray-600">Enter your details to participate</p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+          <input
+            type="text"
+            value={participantName}
+            onChange={(e) => setParticipantName(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder="Enter your name"
+            required
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Room ID</label>
           <input
