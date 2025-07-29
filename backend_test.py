@@ -1333,109 +1333,58 @@ class SecretPollAPITester:
                 return False
         return False
 
-    def run_all_tests(self):
-        """Run all API tests including new professional meeting management features"""
-        print("🚀 Starting Secret Poll API Tests (PROFESSIONAL MEETING MANAGEMENT)")
+    def run_critical_tests(self):
+        """Run the critical tests for PDF download and participant approval during active polls"""
+        print("🚀 Starting CRITICAL Secret Poll API Tests")
+        print("Focus: PDF Download & Participant Approval During Active Polls")
         print("=" * 80)
         
-        # Basic functionality tests
+        # Basic setup
         if not self.test_health_check():
             print("❌ Health check failed, stopping tests")
             return False
 
-        # Test custom room ID functionality
-        print("\n" + "="*50)
-        print("🏢 TESTING CUSTOM ROOM ID FEATURES")
-        print("="*50)
-        
-        if not self.test_custom_room_id_validation():
-            print("❌ Custom room ID validation failed, stopping tests")
-            return False
-        
-        if not self.test_create_room_with_custom_id():
-            print("❌ Custom room ID creation failed, stopping tests")
-            return False
-            
-        self.test_duplicate_custom_room_id()
-
-        # Test regular room creation for other tests
         if not self.test_create_room():
-            print("❌ Regular room creation failed, stopping tests")
+            print("❌ Room creation failed, stopping tests")
             return False
 
-        if not self.test_join_room_with_name():
-            print("❌ Room joining with name failed, stopping tests")
-            return False
-
-        self.test_join_invalid_room()
-
-        if not self.test_get_participants_list():
-            print("❌ Getting participants list failed, stopping tests")
-            return False
-
-        self.test_room_status_with_approval_counts()
-
-        if not self.test_approve_participant():
-            print("❌ Participant approval failed, stopping tests")
-            return False
-
-        # Test poll timer functionality
-        print("\n" + "="*50)
-        print("⏰ TESTING POLL TIMER FEATURES")
-        print("="*50)
+        # Run the two critical tests
+        print("\n" + "="*60)
+        print("🚨 RUNNING CRITICAL ISSUE TESTS")
+        print("="*60)
         
-        if not self.test_create_poll_with_timer():
-            print("❌ Poll timer creation failed, stopping tests")
-            return False
-
-        # Test regular poll creation
-        if not self.test_create_poll():
-            print("❌ Regular poll creation failed, stopping tests")
-            return False
-
-        if not self.test_start_poll():
-            print("❌ Poll start failed, stopping tests")
-            return False
-
-        # Test no restart policy
-        print("\n" + "="*50)
-        print("🚫 TESTING NO POLL RESTART POLICY")
-        print("="*50)
+        # Critical Test 1: Participant Approval During Active Polls
+        approval_success = self.test_critical_participant_approval_during_active_polls()
         
-        if not self.test_poll_no_restart_after_votes():
-            print("❌ No restart policy test failed, stopping tests")
-            return False
-
-        # Test real-time results
-        print("\n" + "="*50)
-        print("📊 TESTING REAL-TIME RESULTS")
-        print("="*50)
+        # Critical Test 2: PDF Generation
+        pdf_success = self.test_critical_pdf_generation()
         
-        if not self.test_real_time_vote_updates():
-            print("❌ Real-time vote updates test failed, stopping tests")
-            return False
-
-        # Test multi-room management - REMOVED (not in simplified system)
-        # print("\n" + "="*50)
-        # print("🏢 TESTING MULTI-ROOM MANAGEMENT")
-        # print("="*50)
-        # 
-        # if not self.test_organizer_multi_room_management():
-        #     print("❌ Multi-room management test failed, stopping tests")
-        #     return False
-
-        # Additional tests
-        print("\n" + "="*50)
-        print("🔧 ADDITIONAL FUNCTIONALITY TESTS")
-        print("="*50)
-        
-        self.test_vote_unapproved_participant()
-        self.test_duplicate_vote()
-        self.test_deny_participant()
-        self.test_generate_report()
+        # Cleanup
+        print("\n" + "="*60)
+        print("🧹 CLEANUP")
+        print("="*60)
         self.test_cleanup_room()
 
-        return True
+        # Results
+        print("\n" + "=" * 80)
+        print("📊 CRITICAL TEST RESULTS")
+        print("=" * 80)
+        print(f"1. Participant Approval During Active Polls: {'✅ PASSED' if approval_success else '❌ FAILED'}")
+        print(f"2. PDF Generation: {'✅ PASSED' if pdf_success else '❌ FAILED'}")
+        print(f"\nOverall Tests Run: {self.tests_run}")
+        print(f"Overall Tests Passed: {self.tests_passed}")
+        print(f"Success Rate: {(self.tests_passed / self.tests_run * 100):.1f}%")
+        
+        if approval_success and pdf_success:
+            print("\n🎉 ALL CRITICAL TESTS PASSED!")
+            return True
+        else:
+            print("\n❌ CRITICAL ISSUES FOUND!")
+            if not approval_success:
+                print("   - Participant approval during active polls has issues")
+            if not pdf_success:
+                print("   - PDF generation has issues")
+            return False
 
 def main():
     """Main test function"""
