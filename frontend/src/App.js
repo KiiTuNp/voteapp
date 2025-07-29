@@ -192,18 +192,24 @@ function App() {
   };
 
   // Create Poll
-  const createPoll = async (question, options) => {
+  const createPoll = async (question, options, timerMinutes = null) => {
     try {
+      const pollData = {
+        room_id: roomData.room_id,
+        question,
+        options
+      };
+      
+      if (timerMinutes) {
+        pollData.timer_minutes = timerMinutes;
+      }
+      
       const response = await fetch(`${BACKEND_URL}/api/polls/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          room_id: roomData.room_id,
-          question,
-          options
-        })
+        body: JSON.stringify(pollData)
       });
       
       const newPoll = await response.json();
