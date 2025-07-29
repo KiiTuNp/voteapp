@@ -224,7 +224,8 @@ class SecretPollAPITester:
             print("❌ No poll ID or participant token available for voting test")
             return False
             
-        vote_data = {
+        # Backend expects query parameters for voting
+        vote_params = {
             "participant_token": self.participant_token,
             "selected_option": "Blue"
         }
@@ -234,7 +235,7 @@ class SecretPollAPITester:
             "POST",
             f"api/polls/{self.poll_id}/vote",
             200,
-            data=vote_data
+            params=vote_params
         )
         return success
 
