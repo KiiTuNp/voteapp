@@ -183,6 +183,7 @@ async def create_poll(request: PollCreateRequest):
         "room_id": request.room_id,
         "question": request.question,
         "options": request.options,
+        "timer_minutes": request.timer_minutes,
         "is_active": False,
         "created_at": datetime.now()
     }
