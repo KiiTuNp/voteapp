@@ -298,19 +298,22 @@ async def get_room_status(room_id: str):
     participant_count = participants_collection.count_documents({"room_id": room_id})
     approved_count = participants_collection.count_documents({"room_id": room_id, "approval_status": "approved"})
     pending_count = participants_collection.count_documents({"room_id": room_id, "approval_status": "pending"})
-    polls = list(polls_collection.find({"room_id": room_id}))
     
-    # Get current active poll
-    active_poll = polls_collection.find_one({"room_id": room_id, "is_active": True})
+    # Get all polls for this room
+    all_polls = list(polls_collection.find({"room_id": room_id}))
     
-    # Clean up active_poll for JSON serialization
-    if active_poll:
-        active_poll = {
-            "poll_id": active_poll["poll_id"],
-            "question": active_poll["question"],
-            "options": active_poll["options"],
-            "is_active": active_poll["is_active"]
-        }
+    # Get all active polls (multiple can be active now)
+    active_polls = list(polls_collection.find({"room_id": room_id, "is_active": True}))
+    
+    # Clean up active polls for JSON serialization
+    clean_active_polls = []
+    for poll in active_polls:
+        clean_active_polls.append({
+            "poll_id": poll["poll_id"],
+            "question": poll["question"],
+            "options": poll["options"],
+            "is_active": poll["is_active"]
+        })
     
     return {
         "room_id": room_id,
@@ -318,8 +321,9 @@ async def get_room_status(room_id: str):
         "participant_count": participant_count,
         "approved_count": approved_count,
         "pending_count": pending_count,
-        "total_polls": len(polls),
-        "active_poll": active_poll
+        "total_polls": len(all_polls),
+        "active_polls": clean_active_polls,  # Changed from single active_poll to multiple active_polls
+        "active_poll_count": len(active_polls)
     }
 
 @app.get("/api/rooms/{room_id}/participants")
