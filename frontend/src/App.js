@@ -537,7 +537,7 @@ function OrganizerDashboard({
             </button>
           </div>
           
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">{activePool.question}</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">{activePoll.question}</h3>
           
           <div className="space-y-3">
             {activePool.options?.map((option, index) => {
