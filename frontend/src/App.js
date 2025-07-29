@@ -158,9 +158,11 @@ function App() {
       const response = await fetch(`${BACKEND_URL}/api/rooms/${roomId}/status`);
       const data = await response.json();
       setRoomStatus(data);
-      if (data.active_poll) {
-        setActivePoll(data.active_poll);
+      if (data.active_polls) {
+        setActivePolls(data.active_polls);
       }
+      // Load all polls for the organizer
+      loadAllPolls(roomId);
     } catch (error) {
       console.error('Error loading room status:', error);
     }
