@@ -152,6 +152,18 @@ function App() {
     }
   };
 
+  // Load all polls for the room
+  const loadAllPolls = async (roomId) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/rooms/${roomId}/polls`);
+      const data = await response.json();
+      setAllPolls(data.polls);
+      setCreatedPolls(data.polls);
+    } catch (error) {
+      console.error('Error loading polls:', error);
+    }
+  };
+
   // Load room status
   const loadRoomStatus = async (roomId) => {
     try {
