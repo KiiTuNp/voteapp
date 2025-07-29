@@ -525,6 +525,19 @@ function OrganizerDashboard({
         </div>
       )}
 
+      {roomStatus?.total_polls > 0 && !activePoll && (
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Polls</h2>
+          <p className="text-sm text-gray-600 mb-4">Start a poll to begin voting</p>
+          <div className="space-y-3">
+            {/* This is a simplified display - in a real app you'd fetch poll list */}
+            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+              <span className="text-gray-700">Click "Create New Poll" to add polls, then they will appear here to start</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activePoll && (
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <div className="flex justify-between items-center mb-6">
