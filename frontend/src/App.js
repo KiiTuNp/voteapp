@@ -378,11 +378,12 @@ function App() {
 // Organizer Card Component
 function OrganizerCard({ onCreateRoom }) {
   const [organizerName, setOrganizerName] = useState('');
+  const [customRoomId, setCustomRoomId] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (organizerName.trim()) {
-      onCreateRoom(organizerName.trim());
+      onCreateRoom(organizerName.trim(), customRoomId.trim());
     }
   };
 
@@ -409,6 +410,18 @@ function OrganizerCard({ onCreateRoom }) {
             placeholder="Enter your name"
             required
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Custom Room ID (Optional)</label>
+          <input
+            type="text"
+            value={customRoomId}
+            onChange={(e) => setCustomRoomId(e.target.value.toUpperCase())}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+            placeholder="e.g., MARKETING-DEC15 (leave empty for random ID)"
+            maxLength={20}
+          />
+          <p className="text-xs text-gray-500 mt-1">Custom IDs help identify meetings (letters, numbers, hyphens only)</p>
         </div>
         <button
           type="submit"
