@@ -230,9 +230,9 @@ function App() {
   };
 
   // Vote
-  const vote = async (selectedOption) => {
+  const vote = async (pollId, selectedOption) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/polls/${activePoll.poll_id}/vote`, {
+      const response = await fetch(`${BACKEND_URL}/api/polls/${pollId}/vote`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +247,7 @@ function App() {
         throw new Error('Failed to vote');
       }
       
-      setHasVoted(true);
+      setHasVoted(prev => ({...prev, [pollId]: true}));
     } catch (error) {
       alert('Error voting: ' + error.message);
     }
