@@ -289,6 +289,8 @@ async def get_room_status(room_id: str):
         raise HTTPException(status_code=404, detail="Room not found")
     
     participant_count = participants_collection.count_documents({"room_id": room_id})
+    approved_count = participants_collection.count_documents({"room_id": room_id, "approval_status": "approved"})
+    pending_count = participants_collection.count_documents({"room_id": room_id, "approval_status": "pending"})
     polls = list(polls_collection.find({"room_id": room_id}))
     
     # Get current active poll
@@ -307,6 +309,8 @@ async def get_room_status(room_id: str):
         "room_id": room_id,
         "organizer_name": room["organizer_name"],
         "participant_count": participant_count,
+        "approved_count": approved_count,
+        "pending_count": pending_count,
         "total_polls": len(polls),
         "active_poll": active_poll
     }
