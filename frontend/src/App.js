@@ -12,6 +12,7 @@ function App() {
   const [allPolls, setAllPolls] = useState([]); // Track all polls with their statuses
   const [hasVoted, setHasVoted] = useState({});  // Changed to object to track votes per poll
   const [voteResults, setVoteResults] = useState({});
+  const [pollTimers, setPollTimers] = useState({}); // Track timers for active polls
   const [roomStatus, setRoomStatus] = useState(null);
   const [createdPolls, setCreatedPolls] = useState([]);
   const [participants, setParticipants] = useState([]);
