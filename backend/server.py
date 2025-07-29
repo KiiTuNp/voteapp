@@ -211,8 +211,12 @@ async def stop_poll(poll_id: str):
     
     return {"message": "Poll stopped"}
 
+class VoteRequest(BaseModel):
+    participant_token: str
+    selected_option: str
+
 @app.post("/api/polls/{poll_id}/vote")
-async def vote(poll_id: str, participant_token: str, selected_option: str):
+async def vote(poll_id: str, request: VoteRequest):
     poll = polls_collection.find_one({"poll_id": poll_id, "is_active": True})
     if not poll:
         raise HTTPException(status_code=404, detail="Poll not found or inactive")
@@ -220,14 +224,14 @@ async def vote(poll_id: str, participant_token: str, selected_option: str):
     # Check if participant already voted for this poll
     existing_vote = votes_collection.find_one({
         "poll_id": poll_id,
-        "participant_token": participant_token
+        "participant_token": request.participant_token
     })
     
     if existing_vote:
         raise HTTPException(status_code=400, detail="Already voted")
     
     # Validate option
-    if selected_option not in poll["options"]:
+    if request.selected_option not in poll["options"]:
         raise HTTPException(status_code=400, detail="Invalid option")
     
     vote_id = str(uuid.uuid4())
@@ -236,8 +240,8 @@ async def vote(poll_id: str, participant_token: str, selected_option: str):
         "vote_id": vote_id,
         "poll_id": poll_id,
         "room_id": poll["room_id"],
-        "participant_token": participant_token,
-        "selected_option": selected_option,
+        "participant_token": request.participant_token,
+        "selected_option": request.selected_option,
         "voted_at": datetime.now()
     }
     
