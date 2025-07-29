@@ -124,7 +124,8 @@ function App() {
         })
       });
       
-      await response.json();
+      const newPoll = await response.json();
+      setCreatedPolls(prev => [...prev, newPoll]);
       loadRoomStatus(roomData.room_id);
     } catch (error) {
       alert('Error creating poll: ' + error.message);
