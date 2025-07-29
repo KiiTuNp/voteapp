@@ -256,6 +256,7 @@ function App() {
           roomData={roomData}
           roomStatus={roomStatus}
           activePoll={activePoll}
+          createdPolls={createdPolls}
           voteResults={voteResults}
           onCreatePoll={createPoll}
           onStartPoll={startPoll}
