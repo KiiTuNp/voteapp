@@ -75,7 +75,14 @@ function App() {
             }
             break;
           case 'vote_update':
-            setVoteResults(data.vote_counts);
+            setVoteResults(prev => ({
+              ...prev,
+              [data.poll_id]: data.vote_counts
+            }));
+            // Also reload all polls to get updated data for organizer
+            if (roomData && roomData.room_id) {
+              loadAllPolls(roomData.room_id);
+            }
             break;
           default:
             break;
