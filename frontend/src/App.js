@@ -298,15 +298,42 @@ function App() {
   // Generate Report
   const generateReport = async () => {
     try {
+      const confirmGenerate = window.confirm(
+        '📄 Generate PDF Report?\n\n' +
+        'This will:\n' +
+        '• Create a comprehensive PDF report with all meeting data\n' +
+        '• Download the report to your computer\n' +
+        '• Permanently delete ALL meeting data for security\n\n' +
+        'Continue?'
+      );
+      
+      if (!confirmGenerate) {
+        return;
+      }
+      
+      // Show loading state
+      const originalButton = document.querySelector('button:contains("📄 Generate PDF Report")');
+      
       // Generate and download PDF report
       const response = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/report`);
       
       if (!response.ok) {
-        throw new Error('Failed to generate report');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Server error: ${response.status}`);
+      }
+      
+      // Verify it's actually a PDF
+      const contentType = response.headers.get('Content-Type');
+      if (!contentType || !contentType.includes('application/pdf')) {
+        throw new Error('Server did not return a PDF file');
       }
       
       // Get the PDF blob
       const blob = await response.blob();
+      
+      if (blob.size === 0) {
+        throw new Error('PDF file is empty');
+      }
       
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -315,41 +342,66 @@ function App() {
       
       // Extract filename from response headers if available
       const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `poll_report_${roomData.room_id}.pdf`;
+      let filename = `poll_report_${roomData.room_id}_${new Date().toISOString().slice(0,19).replace(/[T:]/g, '_')}.pdf`;
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (filenameMatch) {
-          filename = filenameMatch[1];
+          filename = filenameMatch[1].replace(/['"]/g, '');
         }
       }
       
       a.download = filename;
+      a.style.display = 'none';
       document.body.appendChild(a);
+      
+      // Force download
       a.click();
+      
+      // Clean up immediately
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      // Wait a moment for download to start, then cleanup data
+      // Show immediate success message
+      alert(`📄 PDF report "${filename}" has been downloaded!\n\n⏳ Cleaning up meeting data...`);
+      
+      // Wait longer for download to complete, then cleanup data
       setTimeout(async () => {
         try {
-          await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/cleanup`, {
+          const cleanupResponse = await fetch(`${BACKEND_URL}/api/rooms/${roomData.room_id}/cleanup`, {
             method: 'DELETE'
           });
           
-          alert('📄 PDF report downloaded successfully!\n🗑️ All meeting data has been permanently deleted for security.');
+          if (!cleanupResponse.ok) {
+            throw new Error(`Cleanup failed: ${cleanupResponse.status}`);
+          }
+          
+          alert('🗑️ All meeting data has been permanently deleted for security.');
           setCurrentView('home');
           setRoomData(null);
           setParticipants([]);
           setCreatedPolls([]);
+          setAllPolls([]);
           setRoomStatus(null);
+          setActivePolls([]);
+          setVoteResults({});
+          setPollTimers({});
         } catch (cleanupError) {
           console.error('Error during cleanup:', cleanupError);
-          alert('📄 Report downloaded, but there was an issue cleaning up data. Please contact support.');
+          alert(
+            '⚠️ PDF downloaded successfully, but there was an issue cleaning up data.\n\n' +
+            'Please contact support if you need to ensure data deletion.\n\n' +
+            `Error: ${cleanupError.message}`
+          );
         }
-      }, 1000);
+      }, 3000); // Increased delay to ensure download completes
       
     } catch (error) {
-      alert('Error generating report: ' + error.message);
+      console.error('PDF generation error:', error);
+      alert(
+        '❌ Error generating PDF report:\n\n' +
+        `${error.message}\n\n` +
+        'Please try again. If the problem persists, contact support.'
+      );
     }
   };
 
