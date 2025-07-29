@@ -11,6 +11,8 @@ class SecretPollAPITester:
         self.tests_passed = 0
         self.room_id = None
         self.participant_token = None
+        self.participant_id = None
+        self.participant_name = None
         self.poll_id = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
