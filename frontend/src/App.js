@@ -754,7 +754,7 @@ function OrganizerDashboard({
 }
 
 // Participant View Component
-function ParticipantView({ roomData, activePoll, hasVoted, approvalStatus, voteResults, onVote, onBack }) {
+function ParticipantView({ roomData, activePolls, hasVoted, approvalStatus, voteResults, onVote, onBack }) {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
@@ -800,68 +800,70 @@ function ParticipantView({ roomData, activePoll, hasVoted, approvalStatus, voteR
       )}
 
       {/* Only show polls if approved */}
-      {approvalStatus === 'approved' && !activePoll && (
+      {approvalStatus === 'approved' && (!activePolls || activePolls.length === 0) && (
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Waiting for Poll</h2>
-          <p className="text-gray-600">The organizer will start a poll soon...</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Waiting for Polls</h2>
+          <p className="text-gray-600">The organizer will start polls soon...</p>
         </div>
       )}
 
-      {approvalStatus === 'approved' && activePoll && !hasVoted && (
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Poll</h2>
-          <h3 className="text-xl text-gray-700 mb-6">{activePoll.question}</h3>
-          
-          <div className="space-y-3">
-            {activePoll.options?.map((option, index) => (
-              <button
-                key={index}
-                onClick={() => onVote(option)}
-                className="w-full p-4 text-left bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {approvalStatus === 'approved' && activePoll && hasVoted && (
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Poll Results</h2>
-          <h3 className="text-xl text-gray-700 mb-6">{activePoll.question}</h3>
-          
-          <div className="space-y-3">
-            {activePoll.options?.map((option, index) => {
-              const count = voteResults[option] || 0;
-              const total = Object.values(voteResults).reduce((sum, count) => sum + count, 0);
-              const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+      {/* Show all active polls */}
+      {approvalStatus === 'approved' && activePolls && activePolls.length > 0 && (
+        <div className="space-y-6">
+          {activePolls.map((poll) => (
+            <div key={poll.poll_id} className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Poll</h2>
+              <h3 className="text-xl text-gray-700 mb-6">{poll.question}</h3>
               
-              return (
-                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium">{option}</span>
-                    <span className="text-gray-600">{count} votes ({percentage}%)</span>
+              {!hasVoted[poll.poll_id] ? (
+                <div className="space-y-3">
+                  {poll.options?.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => onVote(poll.poll_id, option)}
+                      className="w-full p-4 text-left bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  <div className="space-y-3 mb-6">
+                    {poll.options?.map((option, index) => {
+                      const count = voteResults[poll.poll_id]?.[option] || 0;
+                      const total = Object.values(voteResults[poll.poll_id] || {}).reduce((sum, count) => sum + count, 0);
+                      const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                      
+                      return (
+                        <div key={index} className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">{option}</span>
+                            <span className="text-gray-600">{count} votes ({percentage}%)</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${percentage}%` }}
-                    ></div>
+                  
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <p className="text-green-800 font-medium">✓ Your vote has been recorded anonymously</p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          
-          <div className="mt-6 p-4 bg-green-50 rounded-lg">
-            <p className="text-green-800 font-medium">✓ Your vote has been recorded anonymously</p>
-          </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
