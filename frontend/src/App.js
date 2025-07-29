@@ -73,11 +73,22 @@ function App() {
   }, [roomData]);
 
   // Create Room (Organizer)
-  const createRoom = async (organizerName) => {
+  const createRoom = async (organizerName, customRoomId = '') => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/rooms/create?organizer_name=${encodeURIComponent(organizerName)}`, {
+      const params = new URLSearchParams({ organizer_name: organizerName });
+      if (customRoomId) {
+        params.append('custom_room_id', customRoomId);
+      }
+      
+      const response = await fetch(`${BACKEND_URL}/api/rooms/create?${params}`, {
         method: 'POST'
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to create room');
+      }
+      
       const data = await response.json();
       setRoomData(data);
       setCurrentView('organizer');
