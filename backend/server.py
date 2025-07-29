@@ -340,7 +340,7 @@ async def vote(poll_id: str, request: VoteRequest):
     
     votes_collection.insert_one(vote)
     
-    # Broadcast vote count update
+    # Broadcast vote count update to EVERYONE in the room (not just organizer)
     vote_counts = {}
     for option in poll["options"]:
         count = votes_collection.count_documents({
