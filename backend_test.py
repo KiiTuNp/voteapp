@@ -219,23 +219,23 @@ class SecretPollAPITester:
         return success
 
     def test_vote_on_poll(self):
-        """Test voting on a poll"""
+        """Test voting on a poll with JSON body (FIXED FORMAT)"""
         if not self.poll_id or not self.participant_token:
             print("❌ No poll ID or participant token available for voting test")
             return False
             
-        # Backend expects query parameters for voting
-        vote_params = {
+        # Backend now expects JSON body for voting (FIXED)
+        vote_data = {
             "participant_token": self.participant_token,
             "selected_option": "Blue"
         }
         
         success, response = self.run_test(
-            "Vote on Poll",
+            "Vote on Poll (JSON Body - FIXED)",
             "POST",
             f"api/polls/{self.poll_id}/vote",
             200,
-            params=vote_params
+            data=vote_data
         )
         return success
 
