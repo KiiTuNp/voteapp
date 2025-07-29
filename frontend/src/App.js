@@ -158,6 +158,20 @@ function App() {
     }
   };
 
+  // Auto-refresh participants every 5 seconds when in organizer view
+  useEffect(() => {
+    let interval;
+    if (currentView === 'organizer' && roomData && roomData.room_id) {
+      interval = setInterval(() => {
+        loadParticipants(roomData.room_id);
+        loadRoomStatus(roomData.room_id);
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentView, roomData]);
+
   // Approve participant
   const approveParticipant = async (participantId) => {
     try {
