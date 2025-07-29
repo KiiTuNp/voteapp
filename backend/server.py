@@ -374,6 +374,8 @@ async def deny_participant(participant_id: str):
     })
     
     return {"message": "Participant denied"}
+
+@app.get("/api/rooms/{room_id}/report")
 async def generate_report(room_id: str):
     room = rooms_collection.find_one({"room_id": room_id})
     if not room:
