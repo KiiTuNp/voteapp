@@ -433,12 +433,26 @@ function OrganizerCard({ onCreateRoom }) {
           <input
             type="text"
             value={customRoomId}
-            onChange={(e) => setCustomRoomId(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              // Only allow alphanumeric characters and limit to 10 chars
+              const value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 10);
+              setCustomRoomId(value);
+            }}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-            placeholder="e.g., MARKETING-DEC15 (leave empty for random ID)"
-            maxLength={20}
+            placeholder="e.g., MEETING01 (3-10 characters, letters & numbers only)"
+            maxLength={10}
           />
-          <p className="text-xs text-gray-500 mt-1">Custom IDs help identify meetings (letters, numbers, hyphens only)</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {customRoomId.length > 0 && customRoomId.length < 3 && (
+              <span className="text-red-500">Minimum 3 characters required</span>
+            )}
+            {customRoomId.length >= 3 && (
+              <span className="text-green-600">✓ Valid room ID</span>
+            )}
+            {customRoomId.length === 0 && (
+              <span>Custom IDs help identify meetings (leave empty for random ID)</span>
+            )}
+          </p>
         </div>
         <button
           type="submit"
