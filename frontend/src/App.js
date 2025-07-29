@@ -404,9 +404,11 @@ function App() {
         <ParticipantView 
           roomData={roomData}
           activePolls={activePolls}
+          allPolls={allPolls}
           hasVoted={hasVoted}
           approvalStatus={approvalStatus}
           voteResults={voteResults}
+          pollTimers={pollTimers}
           onVote={vote}
           onBack={() => setCurrentView('home')}
         />
