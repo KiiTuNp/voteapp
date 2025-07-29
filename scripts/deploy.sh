@@ -2265,6 +2265,14 @@ cd "$APP_DIR"
 # Backup current state
 cp -r . "../$APP_NAME-backup-\$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
 
+# Update from git if repository is configured
+if [[ -n "$REPO_URL" ]]; then
+    echo "Pulling latest changes from repository..."
+    git fetch origin >> "$LOG_FILE" 2>&1
+    git checkout $DEPLOY_BRANCH >> "$LOG_FILE" 2>&1
+    git pull origin $DEPLOY_BRANCH >> "$LOG_FILE" 2>&1
+fi
+
 case "$DEPLOYMENT_TYPE" in
     "docker-isolated")
         docker-compose -f docker-compose.isolated.yml down
