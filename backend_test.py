@@ -463,73 +463,360 @@ class SecretPollAPITester:
         )
         return success
 
-    def run_all_tests(self):
-        """Run all API tests in sequence"""
-        print("🚀 Starting Secret Poll API Tests (WITH APPROVAL SYSTEM)")
-        print("=" * 60)
+    def test_multiple_active_polls(self):
+        """Test multiple active polls functionality"""
+        if not self.room_id:
+            print("❌ No room ID available for multiple polls test")
+            return False
+            
+        # Create multiple polls
+        poll_ids = []
+        for i in range(3):
+            poll_data = {
+                "room_id": self.room_id,
+                "question": f"Poll {i+1}: What is your favorite {['color', 'food', 'season'][i]}?",
+                "options": [["Red", "Blue", "Green"], ["Pizza", "Burger", "Pasta"], ["Spring", "Summer", "Winter"]][i]
+            }
+            
+            success, response = self.run_test(
+                f"Create Poll {i+1}",
+                "POST",
+                "api/polls/create",
+                200,
+                data=poll_data
+            )
+            if success and 'poll_id' in response:
+                poll_ids.append(response['poll_id'])
+            else:
+                return False
         
-        # Test 1: Health check
+        # Start all polls
+        for i, poll_id in enumerate(poll_ids):
+            success, response = self.run_test(
+                f"Start Poll {i+1}",
+                "POST",
+                f"api/polls/{poll_id}/start",
+                200
+            )
+            if not success:
+                return False
+        
+        # Check room status shows multiple active polls
+        success, response = self.run_test(
+            "Check Multiple Active Polls Status",
+            "GET",
+            f"api/rooms/{self.room_id}/status",
+            200
+        )
+        
+        if success:
+            active_polls = response.get('active_polls', [])
+            if len(active_polls) == 3:
+                print(f"   ✅ Found {len(active_polls)} active polls as expected")
+                self.poll_ids = poll_ids  # Store for later tests
+                return True
+            else:
+                print(f"   ❌ Expected 3 active polls, found {len(active_polls)}")
+                return False
+        return False
+
+    def test_poll_restart_functionality(self):
+        """Test poll restart functionality"""
+        if not hasattr(self, 'poll_ids') or not self.poll_ids:
+            print("❌ No poll IDs available for restart test")
+            return False
+            
+        first_poll_id = self.poll_ids[0]
+        
+        # Vote on the first poll
+        vote_data = {
+            "participant_token": self.participant_token,
+            "selected_option": "Red"
+        }
+        
+        success, response = self.run_test(
+            "Vote Before Stop",
+            "POST",
+            f"api/polls/{first_poll_id}/vote",
+            200,
+            data=vote_data
+        )
+        if not success:
+            return False
+        
+        # Stop the poll
+        success, response = self.run_test(
+            "Stop Poll for Restart Test",
+            "POST",
+            f"api/polls/{first_poll_id}/stop",
+            200
+        )
+        if not success:
+            return False
+        
+        # Check that poll is no longer active
+        success, response = self.run_test(
+            "Check Poll Stopped",
+            "GET",
+            f"api/rooms/{self.room_id}/status",
+            200
+        )
+        if success:
+            active_polls = response.get('active_polls', [])
+            active_poll_ids = [p['poll_id'] for p in active_polls]
+            if first_poll_id not in active_poll_ids:
+                print(f"   ✅ Poll correctly stopped")
+            else:
+                print(f"   ❌ Poll still appears active after stop")
+                return False
+        
+        # Restart the poll
+        success, response = self.run_test(
+            "Restart Poll",
+            "POST",
+            f"api/polls/{first_poll_id}/start",
+            200
+        )
+        if not success:
+            return False
+        
+        # Check that poll is active again
+        success, response = self.run_test(
+            "Check Poll Restarted",
+            "GET",
+            f"api/rooms/{self.room_id}/status",
+            200
+        )
+        if success:
+            active_polls = response.get('active_polls', [])
+            active_poll_ids = [p['poll_id'] for p in active_polls]
+            if first_poll_id in active_poll_ids:
+                print(f"   ✅ Poll successfully restarted")
+                return True
+            else:
+                print(f"   ❌ Poll not active after restart")
+                return False
+        return False
+
+    def test_vote_persistence_through_restart(self):
+        """Test that votes persist through poll restart cycles"""
+        if not hasattr(self, 'poll_ids') or not self.poll_ids:
+            print("❌ No poll IDs available for vote persistence test")
+            return False
+            
+        second_poll_id = self.poll_ids[1]
+        
+        # Create another participant to vote
+        success, response = self.run_test(
+            "Join Room (Second Voter)",
+            "POST",
+            "api/rooms/join",
+            200,
+            params={"room_id": self.room_id, "participant_name": "Second Voter"}
+        )
+        if not success:
+            return False
+            
+        second_token = response.get('participant_token')
+        
+        # Get participant ID and approve
+        success, response = self.run_test(
+            "Get Participants for Second Voter",
+            "GET",
+            f"api/rooms/{self.room_id}/participants",
+            200
+        )
+        if not success:
+            return False
+            
+        second_participant_id = None
+        for p in response['participants']:
+            if p.get('participant_name') == "Second Voter":
+                second_participant_id = p['participant_id']
+                break
+                
+        if not second_participant_id:
+            print("❌ Could not find second participant")
+            return False
+            
+        # Approve second participant
+        success, response = self.run_test(
+            "Approve Second Participant",
+            "POST",
+            f"api/participants/{second_participant_id}/approve",
+            200
+        )
+        if not success:
+            return False
+        
+        # Both participants vote on second poll
+        vote_data1 = {
+            "participant_token": self.participant_token,
+            "selected_option": "Pizza"
+        }
+        
+        vote_data2 = {
+            "participant_token": second_token,
+            "selected_option": "Burger"
+        }
+        
+        success, response = self.run_test(
+            "First Participant Vote",
+            "POST",
+            f"api/polls/{second_poll_id}/vote",
+            200,
+            data=vote_data1
+        )
+        if not success:
+            return False
+            
+        success, response = self.run_test(
+            "Second Participant Vote",
+            "POST",
+            f"api/polls/{second_poll_id}/vote",
+            200,
+            data=vote_data2
+        )
+        if not success:
+            return False
+        
+        # Stop and restart the poll
+        success, response = self.run_test(
+            "Stop Poll (Vote Persistence Test)",
+            "POST",
+            f"api/polls/{second_poll_id}/stop",
+            200
+        )
+        if not success:
+            return False
+            
+        success, response = self.run_test(
+            "Restart Poll (Vote Persistence Test)",
+            "POST",
+            f"api/polls/{second_poll_id}/start",
+            200
+        )
+        if not success:
+            return False
+        
+        # Check that votes are still there
+        success, response = self.run_test(
+            "Check Vote Persistence",
+            "GET",
+            f"api/rooms/{self.room_id}/polls",
+            200
+        )
+        
+        if success:
+            polls = response.get('polls', [])
+            for poll in polls:
+                if poll['poll_id'] == second_poll_id:
+                    vote_counts = poll.get('vote_counts', {})
+                    total_votes = poll.get('total_votes', 0)
+                    if total_votes == 2:
+                        print(f"   ✅ Votes persisted through restart: {vote_counts}")
+                        return True
+                    else:
+                        print(f"   ❌ Expected 2 votes, found {total_votes}")
+                        return False
+            print("   ❌ Could not find poll in response")
+            return False
+        return False
+
+    def test_enhanced_organizer_dashboard(self):
+        """Test enhanced organizer dashboard features"""
+        if not self.room_id:
+            print("❌ No room ID available for dashboard test")
+            return False
+        
+        # Get all polls to check enhanced features
+        success, response = self.run_test(
+            "Get All Polls (Enhanced Dashboard)",
+            "GET",
+            f"api/rooms/{self.room_id}/polls",
+            200
+        )
+        
+        if success:
+            polls = response.get('polls', [])
+            if len(polls) >= 3:
+                print(f"   ✅ Found {len(polls)} polls with enhanced data")
+                
+                # Check each poll has required fields
+                for poll in polls:
+                    required_fields = ['poll_id', 'question', 'options', 'is_active', 'vote_counts', 'total_votes']
+                    for field in required_fields:
+                        if field not in poll:
+                            print(f"   ❌ Missing field {field} in poll data")
+                            return False
+                
+                # Check that some polls are active and some inactive
+                active_count = sum(1 for poll in polls if poll['is_active'])
+                inactive_count = len(polls) - active_count
+                
+                print(f"   ✅ Active polls: {active_count}, Inactive polls: {inactive_count}")
+                return True
+            else:
+                print(f"   ❌ Expected at least 3 polls, found {len(polls)}")
+                return False
+        return False
+
+    def run_all_tests(self):
+        """Run all API tests in sequence including new multiple polls features"""
+        print("🚀 Starting Secret Poll API Tests (MULTIPLE ACTIVE POLLS & RESTART SYSTEM)")
+        print("=" * 80)
+        
+        # Basic functionality tests
         if not self.test_health_check():
             print("❌ Health check failed, stopping tests")
             return False
 
-        # Test 2: Create room
         if not self.test_create_room():
             print("❌ Room creation failed, stopping tests")
             return False
 
-        # Test 3: Join room with participant name (NEW)
         if not self.test_join_room_with_name():
             print("❌ Room joining with name failed, stopping tests")
             return False
 
-        # Test 4: Try joining invalid room
         self.test_join_invalid_room()
 
-        # Test 5: Get participants list (NEW)
         if not self.test_get_participants_list():
             print("❌ Getting participants list failed, stopping tests")
             return False
 
-        # Test 6: Get room status with approval counts (NEW)
         self.test_room_status_with_approval_counts()
 
-        # Test 7: Create poll (using new JSON format)
-        if not self.test_create_poll():
-            print("❌ Poll creation failed, stopping tests")
-            return False
-
-        # Test 8: Start poll
-        if not self.test_start_poll():
-            print("❌ Poll start failed, stopping tests")
-            return False
-
-        # Test 9: Try voting with unapproved participant (should fail) (NEW)
-        self.test_vote_unapproved_participant()
-
-        # Test 10: Approve participant (NEW)
         if not self.test_approve_participant():
             print("❌ Participant approval failed, stopping tests")
             return False
 
-        # Test 11: Vote on poll (now should work after approval)
-        if not self.test_vote_on_poll():
-            print("❌ Voting failed, stopping tests")
+        # NEW MULTIPLE POLLS TESTS
+        print("\n" + "="*50)
+        print("🔥 TESTING NEW MULTIPLE ACTIVE POLLS FEATURES")
+        print("="*50)
+        
+        if not self.test_multiple_active_polls():
+            print("❌ Multiple active polls test failed, stopping tests")
             return False
 
-        # Test 12: Try duplicate vote (should fail)
+        if not self.test_poll_restart_functionality():
+            print("❌ Poll restart functionality test failed, stopping tests")
+            return False
+
+        if not self.test_vote_persistence_through_restart():
+            print("❌ Vote persistence through restart test failed, stopping tests")
+            return False
+
+        if not self.test_enhanced_organizer_dashboard():
+            print("❌ Enhanced organizer dashboard test failed, stopping tests")
+            return False
+
+        # Additional tests
+        self.test_vote_unapproved_participant()
         self.test_duplicate_vote()
-
-        # Test 13: Test deny participant (NEW)
         self.test_deny_participant()
-
-        # Test 14: Stop poll
-        self.test_stop_poll()
-
-        # Test 15: Generate report
         self.test_generate_report()
-
-        # Test 16: Cleanup room data
         self.test_cleanup_room()
 
         return True
