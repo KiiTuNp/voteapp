@@ -387,14 +387,14 @@ install_docker_deployment() {
     # Installation de Docker si nécessaire
     if ! command -v docker &> /dev/null; then
         print_info "Installation de Docker..."
-        curl -fsSL https://get.docker.com | sh
-        systemctl enable docker
-        systemctl start docker
+        curl -fsSL https://get.docker.com | sh >> /var/log/secret-poll-deploy.log 2>&1
+        systemctl enable docker >> /var/log/secret-poll-deploy.log 2>&1
+        systemctl start docker >> /var/log/secret-poll-deploy.log 2>&1
     fi
     
     if ! command -v docker-compose &> /dev/null; then
         print_info "Installation de Docker Compose..."
-        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose >> /var/log/secret-poll-deploy.log 2>&1
         chmod +x /usr/local/bin/docker-compose
     fi
     
@@ -402,8 +402,15 @@ install_docker_deployment() {
     create_docker_compose
     
     # Construction et démarrage
-    docker-compose build
-    docker-compose up -d
+    print_info "Construction des images Docker..."
+    docker-compose build >> /var/log/secret-poll-deploy.log 2>&1
+    
+    print_info "Démarrage des conteneurs..."
+    docker-compose up -d >> /var/log/secret-poll-deploy.log 2>&1
+    
+    # Attendre que les services démarrent
+    print_info "Attente du démarrage des services..."
+    sleep 30
     
     print_success "Déploiement Docker terminé"
 }
