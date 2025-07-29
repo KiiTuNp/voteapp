@@ -124,20 +124,35 @@ confirm_action() {
         fi
     fi
     
-    if [[ "$default" == "y" ]]; then
-        echo -e "${YELLOW}$message [Y/n]:${NC} "
-    else
-        echo -e "${YELLOW}$message [y/N]:${NC} "
-    fi
-    
-    read -r response
-    response=${response:-$default}
-    
-    if [[ "$response" =~ ^[Yy]$ ]]; then
-        return 0
-    else
-        return 1
-    fi
+    # Interactive mode
+    while true; do
+        if [[ "$default" == "y" ]]; then
+            echo -ne "${YELLOW}$message [Y/n]: ${NC}"
+        else
+            echo -ne "${YELLOW}$message [y/N]: ${NC}"
+        fi
+        
+        # Read from stdin properly
+        read -r response < /dev/tty
+        
+        # Use default if empty
+        if [[ -z "$response" ]]; then
+            response="$default"
+        fi
+        
+        case "$response" in
+            [Yy]|[Yy][Ee][Ss])
+                return 0
+                ;;
+            [Nn]|[Nn][Oo])
+                return 1
+                ;;
+            *)
+                echo -e "${RED}Please answer yes (y) or no (n).${NC}"
+                continue
+                ;;
+        esac
+    done
 }
 
 prompt_input() {
@@ -157,25 +172,40 @@ prompt_input() {
         return
     fi
     
-    if [[ "$secret" == "true" ]]; then
-        echo -e "${CYAN}$prompt${NC}"
-        if [[ -n "$default" ]]; then
-            echo -e "${YELLOW}(default: [hidden])${NC}"
-        fi
-        echo -n "> "
-        read -s value
-        echo
-    else
-        if [[ -n "$default" ]]; then
-            echo -e "${CYAN}$prompt${NC} ${YELLOW}(default: $default)${NC}"
-        else
+    # Interactive mode
+    while true; do
+        if [[ "$secret" == "true" ]]; then
             echo -e "${CYAN}$prompt${NC}"
+            if [[ -n "$default" ]]; then
+                echo -e "${YELLOW}(default: [hidden])${NC}"
+            fi
+            echo -ne "> "
+            read -s value < /dev/tty
+            echo  # New line after hidden input
+        else
+            if [[ -n "$default" ]]; then
+                echo -e "${CYAN}$prompt${NC} ${YELLOW}(default: $default)${NC}"
+            else
+                echo -e "${CYAN}$prompt${NC}"
+            fi
+            echo -ne "> "
+            read -r value < /dev/tty
         fi
-        echo -n "> "
-        read -r value
-    fi
-    
-    echo "${value:-$default}"
+        
+        # Use default if empty
+        if [[ -z "$value" ]]; then
+            value="$default"
+        fi
+        
+        # Validation for non-empty required fields
+        if [[ -z "$value" && -z "$default" ]]; then
+            echo -e "${RED}This field is required. Please enter a value.${NC}"
+            continue
+        fi
+        
+        echo "$value"
+        return
+    done
 }
 
 # =============================================================================
@@ -402,40 +432,70 @@ choose_deployment_strategy() {
     echo "   - Manual conflict resolution"
     echo
     
+    # Interactive choice with validation
     local choice
-    if [[ "$has_conflicts" == "true" ]]; then
-        choice=$(prompt_input "Select deployment option (1-5)" "1")
-    else
-        choice=$(prompt_input "Select deployment option (1-5)" "2")
-    fi
-    
-    case "$choice" in
-        1) 
-            DEPLOYMENT_TYPE="docker-isolated"
-            print_info "Selected: Docker Isolated Deployment"
-            ;;
-        2) 
-            DEPLOYMENT_TYPE="docker-standard"
-            print_info "Selected: Docker Standard Deployment"
-            ;;
-        3) 
-            DEPLOYMENT_TYPE="manual-integration"
-            print_info "Selected: Manual Integration Deployment"
-            ;;
-        4) 
-            DEPLOYMENT_TYPE="portable"
-            print_info "Selected: Portable Installation"
-            ;;
-        5) 
-            DEPLOYMENT_TYPE="custom"
-            print_info "Selected: Custom Configuration"
-            ;;
-        *) 
-            print_error "Invalid selection"
-            choose_deployment_strategy
-            return
-            ;;
-    esac
+    while true; do
+        if [[ "$AUTO_MODE" == true ]]; then
+            if [[ "$has_conflicts" == "true" ]]; then
+                choice="1"
+                echo -e "${CYAN}Select deployment option (1-5)${NC} ${YELLOW}[AUTO: 1]${NC}"
+            else
+                choice="2" 
+                echo -e "${CYAN}Select deployment option (1-5)${NC} ${YELLOW}[AUTO: 2]${NC}"
+            fi
+        else
+            if [[ "$has_conflicts" == "true" ]]; then
+                echo -ne "${CYAN}Select deployment option (1-5) ${YELLOW}(recommended: 1)${NC}: "
+            else
+                echo -ne "${CYAN}Select deployment option (1-5) ${YELLOW}(recommended: 2)${NC}: "
+            fi
+            read -r choice < /dev/tty
+            
+            # Use default if empty
+            if [[ -z "$choice" ]]; then
+                if [[ "$has_conflicts" == "true" ]]; then
+                    choice="1"
+                else
+                    choice="2"
+                fi
+            fi
+        fi
+        
+        case "$choice" in
+            1) 
+                DEPLOYMENT_TYPE="docker-isolated"
+                print_info "Selected: Docker Isolated Deployment"
+                break
+                ;;
+            2) 
+                DEPLOYMENT_TYPE="docker-standard"
+                print_info "Selected: Docker Standard Deployment"
+                break
+                ;;
+            3) 
+                DEPLOYMENT_TYPE="manual-integration"
+                print_info "Selected: Manual Integration Deployment"
+                break
+                ;;
+            4) 
+                DEPLOYMENT_TYPE="portable"
+                print_info "Selected: Portable Installation"
+                break
+                ;;
+            5) 
+                DEPLOYMENT_TYPE="custom"
+                print_info "Selected: Custom Configuration"
+                break
+                ;;
+            *) 
+                echo -e "${RED}Invalid selection. Please choose 1, 2, 3, 4, or 5.${NC}"
+                if [[ "$AUTO_MODE" == true ]]; then
+                    exit 1
+                fi
+                continue
+                ;;
+        esac
+    done
 }
 
 collect_configuration() {
