@@ -922,22 +922,57 @@ function ParticipantView({ roomData, activePolls, hasVoted, approvalStatus, vote
         <div className="space-y-6">
           {activePolls.map((poll) => (
             <div key={poll.poll_id} className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Active Poll</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Active Poll</h2>
+                {pollTimers[poll.poll_id] && (
+                  <PollTimer endTime={pollTimers[poll.poll_id]} />
+                )}
+              </div>
               <h3 className="text-xl text-gray-700 mb-6">{poll.question}</h3>
               
               {!hasVoted[poll.poll_id] ? (
-                <div className="space-y-3">
-                  {poll.options?.map((option, index) => (
-                    <button
-                      key={index}
-                      onClick={() => onVote(poll.poll_id, option)}
-                      className="w-full p-4 text-left bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
-                    >
-                      {option}
-                    </button>
-                  ))}
+                // Voting interface with live results
+                <div>
+                  <div className="space-y-3 mb-6">
+                    {poll.options?.map((option, index) => (
+                      <button
+                        key={index}
+                        onClick={() => onVote(poll.poll_id, option)}
+                        className="w-full p-4 text-left bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors relative"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{option}</span>
+                          <span className="text-gray-600 text-sm">
+                            {voteResults[poll.poll_id]?.[option] || 0} votes
+                          </span>
+                        </div>
+                        {/* Live progress bar */}
+                        {voteResults[poll.poll_id] && (
+                          <div className="mt-2">
+                            <div className="w-full bg-gray-200 rounded-full h-1">
+                              <div 
+                                className="bg-blue-400 h-1 rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: `${
+                                    Object.values(voteResults[poll.poll_id]).reduce((sum, count) => sum + count, 0) > 0
+                                      ? ((voteResults[poll.poll_id][option] || 0) / 
+                                         Object.values(voteResults[poll.poll_id]).reduce((sum, count) => sum + count, 0) * 100)
+                                      : 0
+                                  }%` 
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-600 text-center">
+                    👆 Click an option to vote • Results update in real-time
+                  </p>
                 </div>
               ) : (
+                // Results display after voting
                 <div>
                   <div className="space-y-3 mb-6">
                     {poll.options?.map((option, index) => {
@@ -964,9 +999,56 @@ function ParticipantView({ roomData, activePolls, hasVoted, approvalStatus, vote
                   
                   <div className="p-4 bg-green-50 rounded-lg">
                     <p className="text-green-800 font-medium">✓ Your vote has been recorded anonymously</p>
+                    <p className="text-green-700 text-sm">Results update automatically as others vote</p>
                   </div>
                 </div>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Show closed polls with final results */}
+      {approvalStatus === 'approved' && allPolls && allPolls.length > 0 && (
+        <div className="space-y-6">
+          {allPolls.filter(poll => !poll.is_active && poll.total_votes > 0).map((poll) => (
+            <div key={poll.poll_id} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-gray-400">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Poll Results</h2>
+                <span className="px-3 py-1 bg-gray-600 text-white text-sm rounded-full font-medium">
+                  CLOSED
+                </span>
+              </div>
+              <h3 className="text-xl text-gray-700 mb-6">{poll.question}</h3>
+              
+              <div className="space-y-3 mb-4">
+                {poll.options?.map((option, index) => {
+                  const count = poll.vote_counts?.[option] || 0;
+                  const total = poll.total_votes || 0;
+                  const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                  
+                  return (
+                    <div key={index} className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium">{option}</span>
+                        <span className="text-gray-600">{count} votes ({percentage}%)</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gray-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="p-3 bg-gray-100 rounded-lg text-center">
+                <p className="text-gray-700 text-sm font-medium">
+                  Final Results • Total Votes: {poll.total_votes}
+                </p>
+              </div>
             </div>
           ))}
         </div>
