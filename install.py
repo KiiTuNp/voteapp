@@ -244,9 +244,9 @@ class SecretPollInstaller:
         python_packages = ['python3', 'python3-pip', 'python3-venv', 'python3-dev', 'build-essential']
         self.run_command(['apt-get', 'install', '-y'] + python_packages, "Installing Python")
         
-        # Install Node.js 18
-        self.log("Installing Node.js 18", "INFO")
-        self.run_command(['curl', '-fsSL', 'https://deb.nodesource.com/setup_18.x', '-o', '/tmp/nodejs_setup.sh'])
+        # Install Node.js 20
+        self.log("Installing Node.js 20", "INFO")
+        self.run_command(['curl', '-fsSL', 'https://deb.nodesource.com/setup_20.x', '-o', '/tmp/nodejs_setup.sh'])
         self.run_command(['bash', '/tmp/nodejs_setup.sh'])
         self.run_command(['apt-get', 'install', '-y', 'nodejs'], "Installing Node.js")
         
