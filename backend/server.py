@@ -109,7 +109,7 @@ async def create_room(organizer_name: str):
     return {"room_id": room_id, "organizer_name": organizer_name}
 
 @app.post("/api/rooms/join")
-async def join_room(room_id: str):
+async def join_room(room_id: str, participant_name: str):
     # Check if room exists and is active
     room = rooms_collection.find_one({"room_id": room_id, "is_active": True})
     if not room:
@@ -122,22 +122,29 @@ async def join_room(room_id: str):
     participant = {
         "participant_id": participant_id,
         "room_id": room_id,
+        "participant_name": participant_name,
         "participant_token": participant_token,
+        "approval_status": "pending",
         "joined_at": datetime.now()
     }
     
     participants_collection.insert_one(participant)
     
-    # Broadcast participant count update
+    # Broadcast participant update to organizer
     participant_count = participants_collection.count_documents({"room_id": room_id})
+    pending_count = participants_collection.count_documents({"room_id": room_id, "approval_status": "pending"})
+    
     await manager.broadcast_to_room(room_id, {
         "type": "participant_update",
-        "participant_count": participant_count
+        "participant_count": participant_count,
+        "pending_count": pending_count
     })
     
     return {
         "participant_token": participant_token,
+        "participant_name": participant_name,
         "room_id": room_id,
+        "approval_status": "pending",
         "organizer_name": room["organizer_name"]
     }
 
