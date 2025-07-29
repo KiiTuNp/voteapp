@@ -337,7 +337,8 @@ function App() {
         <OrganizerDashboard 
           roomData={roomData}
           roomStatus={roomStatus}
-          activePoll={activePoll}
+          activePolls={activePolls}
+          allPolls={allPolls}
           createdPolls={createdPolls}
           participants={participants}
           voteResults={voteResults}
