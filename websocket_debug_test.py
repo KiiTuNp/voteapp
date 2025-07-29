@@ -81,8 +81,11 @@ class WebSocketDebugTester:
                     print("❌ No WebSocket message received within timeout")
                     return False
                     
-        except websockets.exceptions.InvalidStatusCode as e:
-            print(f"❌ WebSocket connection failed with status code: {e.status_code}")
+        except websockets.exceptions.ConnectionClosedError as e:
+            print(f"❌ WebSocket connection failed: {e}")
+            return False
+        except websockets.exceptions.InvalidURI as e:
+            print(f"❌ WebSocket invalid URI: {e}")
             return False
         except Exception as e:
             print(f"❌ WebSocket connection error: {str(e)}")
